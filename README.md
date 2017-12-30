@@ -16,8 +16,7 @@ to achieve conditional execution with some tricks.
 to enable multi-path execution in Monero, a t-of-n multi-signature scheme is used, more precisely
 a 3-of-4 scheme.
 
-
-### Bitcoin
+### Bitcoin
 **Timelock:**
 to enable the possibility of canceling the swap even if the transaction is on the blockchain.
 
@@ -68,6 +67,11 @@ The Bitcoin kind of notation is used to describe the multi-signature.
 3 <s> <s'> <XMRAlice's pubkey> <XMRBob's pubkey> 4
 ```
 
+#### Zero-Knowledge proof
+Because Alice need to create a secret used in the Monero transaction without
+revealing it before she spend the Bitcoin, she needs to provide a zero-knowledge
+proof to convince Bob that she act honestly.
+
 #### Design
 
 ```
@@ -75,10 +79,13 @@ The Bitcoin kind of notation is used to describe the multi-signature.
 
   s <- 2^256 bits random
   h <- HASH(s)
+  a <- XMRAddress(h)
+  phi <- zkp[it exist s: h = HASH(s) and a = XMRAddress(s)]
 
-                        < h, BTCAlice's pubkey >
+                     < h, a, phi, BTCAlice's pubkey >
                       ---------------------------->
 
+                                                verify phi
                                                 s' <- 2^256 bits random
                                                 h' <- HASH(s')
                                                 s'' <- 2^256 bits random
@@ -113,7 +120,8 @@ The Bitcoin kind of notation is used to describe the multi-signature.
 ```
 
 First Alice creates the first secret (s) and compute the hash of it (h) and she sends her
-BTC address and the hash (h). When Bob receives the hash and Alice's public key he create
+BTC address, the hash (h), and the Monero address corresponding to the secret s.
+When Bob receives the hash and Alice's public key he create
 to secret (s' and s'') and their hashes (h' and h'') and he creates the Bitcoin transaction
 with the custom script BTCSwapScript as the P2SH swap output. He sent to Alice the two
 hashes (h' and h''), the Bitcoin transaction and his Monero address. When Alice receives
