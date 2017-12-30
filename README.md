@@ -79,7 +79,7 @@ proof to convince Bob that she act honestly.
 
   s <- 2^256 bits random
   h <- HASH(s)
-  a <- XMRAddress(h)
+  a <- XMRAddress(s)
   phi <- zkp[it exist s: h = HASH(s) and a = XMRAddress(s)]
 
                      < h, a, phi, BTCAlice's pubkey >
