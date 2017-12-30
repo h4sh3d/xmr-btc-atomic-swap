@@ -64,7 +64,7 @@ OP_ENDIF
 The Bitcoin kind of notation is used to describe the multi-signature.
 
 ```
-3 <s> <s'> <XMRAlice's pubkey> <XMRBob's pubkey> 4
+3 <XMRAddress(s)> <XMRAddress(s')> <XMRAlice's pubkey> <XMRBob's pubkey> 4
 ```
 
 #### Zero-Knowledge proof
@@ -77,7 +77,7 @@ proof to convince Bob that she act honestly.
 ```
              Alice (XMR)                             Bob (BTC)
 
-  s <- 2^256 bits random
+  s <- 256 random bits
   h <- HASH(s)
   a <- XMRAddress(s)
   phi <- zkp[it exist s: h = HASH(s) and a = XMRAddress(s)]
@@ -86,9 +86,9 @@ proof to convince Bob that she act honestly.
                       ---------------------------->
 
                                                 verify phi
-                                                s' <- 2^256 bits random
+                                                s' <- 256 random bits
                                                 h' <- HASH(s')
-                                                s'' <- 2^256 bits random
+                                                s'' <- 256 random bits
                                                 h'' <- HASH(s')
                                                 BTX <- create BTC tx
 
