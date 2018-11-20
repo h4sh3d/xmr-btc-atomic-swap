@@ -1,138 +1,208 @@
 Cross-chain Bitcoin & Monero Atomic Swap
 ===
 
-Cross-chain atomic swaps are discussed for a very long time and are a very useful feature.
-This paper describes how to do an atomic swap between Bitcoin and Monero with only one transaction
-per blockchain (without spending the swap).
+Cross-chain atomic swaps are discussed for a very long time and are very useful tools. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, or the other swap participant.
+
+## Scenario
+Alice, who owns Monero (XMR), and Bob, who owns Bitcoin (BTC), want to swap their funds. We asume that they already have negociated the right amount plus some fees or what not.
+
+They want to send funds to a special location on each chain (cross-chain) where each party can take control of the other chain (swap) and the other chain only (atomic).
+
+### Normal scenario
+If both follow the protocol 4 transactions will be broadcast into both chains, 2 on Bitcoin and 2 on Monero. The first one lock the funds and make them ready for the trade on each chain. The second one unlock the funds for one participant only and give knowledge to the other that take control of the other chain.
+
+### Worst case scenario
+In the swap is cancelled, 3 Bitcoin transactions are needed instead of 2. This is to avoid a race condition that could allow Alice to gain XMR and BTC. The worst case is then 5 transactions in total.
 
 ## Prerequisites
-To be feasible some prerequisites are needed on both blockchains. Bitcoin has a very flexible
-scripting language that allows conditional execution and timelocks. Thus, Monero has very
-limited capabilities when it comes to lock funds in a custom way. Nevertheless, it is possible
-to achieve conditional execution with some tricks.
+Conditional executions must be allowed to achieve the swap and ensure atomicity. Bitcoin has a small stack-based script language that allows conditional execution and timelocks. Thus, Monero, with its privacy oriented RingCT design, provides single signature per UTXO. That means that control of UTXOs is only related to whose control the associated private keys. The challenge is then to move control of funds only with knowledge of some private key.
+
+This protocol is heavily based on an old Monero StackExchange post that can be found [here](https://monero.stackexchange.com/questions/894/can-you-trustlessly-trade-monero-for-bitcoin/895#895). The concept is roughly the same with some changes in the Bitcoin part, but this protocol is explain more in details.
+
+We describe some components required for each chain.
 
 ### Monero
-**T-of-N multi-signature scheme:**
-to enable multi-path execution in Monero, a t-of-n multi-signature scheme is used, more precisely
-a 3-of-4 scheme.
+**2-out-of-2 scheme:**
+to enable multi-path execution in Monero, a 2-out-of-2 multisig is used. In reality we will not use any multi-signing protocol, the private spend key is split in two part during the swap process but at the end one participant will gain knowledge of the full key. So it's more a secret sharing that a multisig and then it's not realy a requirement for Monero.
+
+**Pre-image non-interactive zero-knowledge proofs:**
+to prove to the other participant that a valid pre-image to a given hash is known and within a range, e.g. > 0 and < l where l is related to edwaed25519 curve.
+
+**edward25519 private key non-interactive zero-knowledge proofs:**
+to prove to the other participant that a valid private key is known, e.g. signatures are valid non-interactive zero-knowledge proof given a public key.
 
 ### Bitcoin
 **Timelock:**
-to enable the possibility of canceling the swap even if the transaction is on the blockchain.
+to enable new execution paths after some predefined amount of time, i.e. cancelling the swap even after having locked funds on-chain.
 
 **Hashlock:**
-to enable the trigger mechanism to activate the swap. A hashlock is a condition that requires
-a party to reveal a secret (pre-image) associated with a given hash.
+to reveal secrets to the other participant. Hashlocks are mini-scripts that require the sender to reveal some data (a pre-image) associated with a given hash.
 
-## Scheme
-Alice, who owns Monero (XMR), and Bob, who owns Bitcoin (BTC), want to swap an arbitrary amount.
-To enable the swap they need to create an XMR transaction and a BTC transaction and broadcast them
-on each blockchain. When both transactions are on-chain, Bob can trigger the swap or cancel after
-a pre-defined amount of time (timelock). If Bob trigger the swap, Alice---before the end of the
-timelock---can spend the BTC. If the BTC are spent, Bob can spend the XMR, if Bob cancels the swap
-after the timelock, Alice can spend the XMR.
+**2-out-of-2 multisig:**
+to create the refund path.
 
-### Worst case scenario
-Like described in the previous scheme, if Bob doesn't unlock the BTC, Alice cannot get back her XMR.
-In the case of an non-cooperation by Bob both funds are locked, both parties loose in the trade.
-(thus, to attack another party one can bet on change of the value over the time.)
-In the case when Bob disappears (death) and nobody can access the BTC and spend it, XMR are locked
-forever.
+## Protocol
+The protocol move XMR funds into an address (e.g. 2-out-of-2 multisig) where each participant control half the key. We then use the Bitcoin scripting language to reveal one or the other half of the private spend key. Bitcoin transactions are designed so if a participant follow the protocol he can't terminate with a loss.
 
-### Protocol
-The protocol describes how to achieve the broadcasting of both transactions in a trustless manner
-and safely.
+If the deal goes throught, Alice spend the BTC by revealing her half private key that allows Bob to spend the XMR. If the deal is cancelled, Bob spend the BTC by revealing his half private key that allows Alice to spend the XMR, both loose chain fees, in this case Bob is disadvantaged because of the 3 "heavy" BTC transactions.
 
-#### BTCSwapScript
-The BTCSwapScript is a custom Bitcoin script used to ensure the sequence of the swap. There are
-two possible execution paths: Alice can spend with two secrets and hes signature, and Bob can
-spend, after a timelock, with one secret and his signature.
+### Bitcoin scripts
+
+#### SWAPLOCK
+SWAPLOCK is a P2SH used to lock funds and define the two execution paths: (1) normal and (2) refund [cancel].
 
 ```
 OP_IF
     <BTCAlice's pubkey> OP_CHECKSIGVERIFY
-    OP_HASH160 <h> OP_EQUALVERIFY
-    OP_HASH160 <h''> OP_EQUAL
+    OP_SHA256 <h_0> OP_EQUALVERIFY
+    OP_SHA256 <h_2> OP_EQUAL
 OP_ESLE
-    <BTCBob's pubkey> OP_CHECKSIG
-    OP_HASH160 <h'> OP_EQUALVERIFY
-    <timelock> OP_CHECKSEQUENCEVERIFY OP_DROP
+    2 <BTCAlice's pubkey> <BTCBob's pubkey> 2 OP_CHECKMULTISIGVERIFY
+    <timelock_0> OP_CHECKSEQUENCE
 OP_ENDIF
 ```
 
-#### T-of-N XMR multi-signature
-The Bitcoin kind of notation is used to describe the multi-signature.
+#### REFUND
+REFUND is a second P2SH used in the case the swap already started on-chain but is cancelled. This refund script is used as the only output of a transaction that spend the SWAPLOCK output with the 2-out-of-2 timelocked multisig.
 
 ```
-3 <XMRAddress(s)> <XMRAddress(s')> <XMRAlice's pubkey> <XMRBob's pubkey> 4
+OP_IF
+    <BTCBob's pubkey> OP_CHECKSIGVERIFY
+    OP_SHA256 <h_1> OP_EQUAL
+OP_ESLE
+    <BTCAlice's pubkey> OP_CHECKSIGVERIFY
+    <timelock_1> OP_CHECKSEQUENCE
+OP_ENDIF
 ```
 
-#### Zero-Knowledge proof
-Because Alice need to create a secret used in the Monero transaction without
-revealing it before she spend the Bitcoin, she needs to provide a zero-knowledge
-proof to convince Bob that she act honestly.
+### 2-out-of-2 private XMR spend key
+Full XMR private key is a pair of edward25519 private/public keys. The first pair is called view keys and the second spend keys. We use small letter to denote private keys and caps for public keys such that
 
-#### Design
+```
+A = aG
+```
+
+We denote
+
+* the private key `a` as the private view key and `A` the public view key,
+* and the private key `x` as the private spend key and `X` the public spend key.
+
+#### Partial keys
+We denote partial private keys as `a_0` and `a_1` such that
+
+```
+a_0 + a_1 = a mod l
+```
+
+where `l` is a edward25519 curve parameter. And then
+
+```
+A_0 = a_0G
+A_1 = a_1G
+A_0 + A_1 = (a_0 + a1)G = aG = A
+```
+
+The same is true for `x` with `x_0` and `x_1`.
+
+### Zero-Knowledge proofs
+Two zero-knowledge proofs are required at the begining of the protocol for the trustlessness. Their are quite symetric but Bob needs to prove one more information to Alice. We denote Alice's ZKP basic ZKP and Bob's one extended ZKP.
+
+#### Basic ZKP
+Alice must prove to Bob that
+
+```
+x := valid private key on edward25519 curve
+X := xG
+h := H(x)
+
+Given X, h proove that:
+
+    it extist x such that X = xG and h = H(x)                  (1)
+
+for H := SHA256
+```
+
+#### Extended ZKP
+Bob must prove to Alice that
+
+```
+x  := valid private key on edward25519 curve
+X  := xG
+h  := H(x)
+s  := random 32 bytes data
+h' := H(s)
+
+Given X, h, h' proove that:
+
+    it extist x such that X = xG and h = H(x) and h' = H(s)    (2)
+
+for H := SHA256
+```
+
+### Design
 
 ```
              Alice (XMR)                             Bob (BTC)
 
-  s <- 256 random bits
-  h <- HASH(s)
-  a <- XMRAddress(s)
-  phi <- zkp[it exist s: h = HASH(s) and a = XMRAddress(s)]
+  a_0             [partial priv view key ]     a_1
+  x_0             [partial priv spend key]     x_1
+  X_0             [partial pub spend key ]     X_1
+  b_a             [priv BTC key          ]     b_b
+  B_a             [pub BTC key           ]     B_b
+  h_0 := H(x_0)                                h_1 := H(x_1)
+                                               s := 256 random bits
+                                               h_2 := H(s)
+  z_0 := zkp(x_0, X_0, h_0)                    z_1 := zkp(x_1, X_1, h_1, s, h_2)
 
-                     < h, a, phi, BTCAlice's pubkey >
-                      ---------------------------->
 
-                                                verify phi
-                                                s' <- 256 random bits
-                                                h' <- HASH(s')
-                                                s'' <- 256 random bits
-                                                h'' <- HASH(s')
-                                                BTX <- create BTC tx
+          < a_0, a_1, X_0, X_1, B_a, B_b, h_0, h_1, h_2, z_0, z_1 >
+                      <--------------------------->
 
-                    < h', h'', BTX, XMRBob's pubkey >
+   verify(z_1)                                  verify(z_0)
+
+                           a = a_0 + a_1 mod l
+                           A = aG
+                           X = X_0 + X_1
+
+                                                create Btx_1 w/ SWAPLOCK
+                                                create Btx_2 w/ REFUND
+                                                sign(Btx_2)
+
+
+                             < Btx_1, Btx_2 >
                       <----------------------------
 
-  verify BTX
-  broadcast BTX
+  verify(Btx_1, Btx_2)
+  sign(Btx_2)
 
-  (watch BTX for cancelation after timelock)
-
-  XTX <- create XMR tx
-
-                                  < XTX >
+                             < Btx_2 signed >
                       ---------------------------->
 
-                                                validate XTX
-                                                broadcast XTX
+                                                verif(Btx_2 signed)
+                                                broadcast(Btx_1)
 
-                                  < s'' >
-                      <----------------------------
+                               (watch Btx_1)
+                      < - - - - - - - - - - - - - -
 
-  spend BTX w/ s, s'', BTCAlice
+  wait for Btx_1 n confirmations
+  create Xtx w/ A, X
+  broadcast(Xtx)
 
-                                (watch BTX)
+                            (watch Xtx w/ A, X)
                       - - - - - - - - - - - - - - >
 
-                                                 spend XTX w/ s, s', XMRBob
+                                                wait for Xtx n' confirmations
+                                                verify(Xtx) w/ A, X
+
+                                   < s >
+                      <----------------------------
+
+  spend Btx_1 w/ s, x_0, b_a
+
+                             (watch Btx_1 UTXO)
+                      - - - - - - - - - - - - - - >
+
+                                                 x = x_0 + x_1 mod l
+                                                 spend Xtx w/ x
+
 ```
-
-First Alice creates the first secret (s) and compute the hash of it (h) and she sends her
-BTC address, the hash (h), and the Monero address corresponding to the secret s.
-When Bob receives the hash and Alice's public key he create
-to secret (s' and s'') and their hashes (h' and h'') and he creates the Bitcoin transaction
-with the custom script BTCSwapScript as the P2SH swap output. He sent to Alice the two
-hashes (h' and h''), the Bitcoin transaction and his Monero address. When Alice receives
-the data, she verifies the Bitcoin transaction and, if correct, broadcast it. Then she creates
-the Monero transaction and sent it to Bob. When Bob receive the Monero transaction, he verifies
-it and, if correct, broadcast it. Then he sent the third secret (s'') to trigger the swap.
-
-At this point (before sending the secret s''), Alice knows: s, BTCAlice's private key,
-and XMRAlice's private key; Bob knows: s', s'', BTCBob's private key, and XMRBob's private
-key. So nobody can claim their funds in the other chain, only Bob can, after the timelock,
-cancel the swap by tacking his BTC back and reveal the secret need by Alice to unlock her XMR.
-After sharing the secret s'', Alice can claim the BTC with s, s'', and her signature,
-to doing it, she needs to reveal the secret s, so Bob can spend the XMR with s, s', and his
-signature.
