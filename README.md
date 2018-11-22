@@ -4,12 +4,12 @@ Cross-chain Bitcoin & Monero Atomic Swap
 Cross-chain atomic swaps have been discussed for a very long time and are very useful tools. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, or the other swap participant.
 
 ## Scenario
-Alice, who owns Monero (XMR), and Bob, who owns Bitcoin (BTC), want to swap their funds. We assume that they already have negociated the right amount plus some fees or what not.
+Alice, who owns Monero (XMR), and Bob, who owns Bitcoin (BTC), want to swap their funds. We assume that they already have negotiated the right amount plus some fees or what not.
 
 They want to send funds to a special location on each chain (cross-chain) where each party can take control of the other chain (swap) and the other chain only (atomic).
 
 ### Normal scenario
-If both follow the protocol 4 transactions will be broadcast into both chains, 2 on Bitcoin and 2 on Monero. The first ones lock the funds and make them ready for the trade on each chain. The second ones unlock the funds for one participant only and give knowledge to the other that take control of the other chain.
+If both follow the protocol 4 transactions will be broadcast into both chains, 2 on Bitcoin and 2 on Monero. The first ones locks the funds and makes them ready for the trade on each chain. The second ones unlock the funds for one participant only and give knowledge to the other that take control of the other chain.
 
 ### Worst case scenario
 In the swap is cancelled, 3 Bitcoin transactions are needed instead of 2. This is to avoid a race condition that could allow Alice to gain XMR and BTC. The worst case is then 5 transactions in total.
@@ -25,10 +25,10 @@ We describe some components required for each chain.
 **2-out-of-2 scheme:**
 to enable multi-path execution in Monero, a 2-out-of-2 multisig is used. In reality we will not use any multi-signing protocol, the private spend key is split in two parts during the swap process but at the end one participant will gain knowledge of the full key. So it's more a secret sharing that a multisig and then it's not really a requirement for Monero.
 
-**Pre-image non-interactive zero-knowledge proofs:**
+**Pre-image non-interactive zero-knowledge proofs of knowledge:**
 to prove to the other participant that a valid pre-image to a given hash is known and within a range, e.g. > 0 and < l where l is related to edward25519 curve.
 
-**edward25519 private key non-interactive zero-knowledge proofs:**
+**edward25519 private key non-interactive zero-knowledge proofs of knowledge:**
 to prove to the other participant that a valid private key is known, e.g. signatures are valid non-interactive zero-knowledge proof given a public key.
 
 ### Bitcoin
@@ -117,7 +117,7 @@ h := H(x)
 
 Given X, h prove that:
 
-    it exists x such that X = xG and h = H(x)                  (1)
+    it exists x such that X = xG and h = H(x)                        (1)
 
 for H := SHA256
 ```
@@ -134,7 +134,8 @@ h' := H(s)
 
 Given X, h, h' prove that:
 
-    it exists x such that X = xG and h = H(x) and h' = H(s)    (2)
+    there exists x, s such that X = xG and h = H(x) and h' = H(s)    (2)
+    with s in range [0, 2^256]                                       (3)
 
 for H := SHA256
 ```
