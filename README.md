@@ -4,7 +4,7 @@ Cross-chain Bitcoin & Monero Atomic Swap
 Cross-chain atomic swaps have been discussed for a very long time and are very useful tools. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, or the other swap participant.
 
 ## Scenario
-Alice, who owns Monero (XMR), and Bob, who owns Bitcoin (BTC), want to swap their funds. We asume that they already have negociated the right amount plus some fees or what not.
+Alice, who owns Monero (XMR), and Bob, who owns Bitcoin (BTC), want to swap their funds. We assume that they already have negociated the right amount plus some fees or what not.
 
 They want to send funds to a special location on each chain (cross-chain) where each party can take control of the other chain (swap) and the other chain only (atomic).
 
