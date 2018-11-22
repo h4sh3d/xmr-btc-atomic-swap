@@ -26,7 +26,7 @@ We describe some components required for each chain.
 to enable multi-path execution in Monero, a 2-out-of-2 multisig is used. In reality we will not use any multi-signing protocol, the private spend key is split in two parts during the swap process but at the end one participant will gain knowledge of the full key. So it's more a secret sharing that a multisig and then it's not really a requirement for Monero.
 
 **Pre-image non-interactive zero-knowledge proofs:**
-to prove to the other participant that a valid pre-image to a given hash is known and within a range, e.g. > 0 and < l where l is related to edwaed25519 curve.
+to prove to the other participant that a valid pre-image to a given hash is known and within a range, e.g. > 0 and < l where l is related to edward25519 curve.
 
 **edward25519 private key non-interactive zero-knowledge proofs:**
 to prove to the other participant that a valid private key is known, e.g. signatures are valid non-interactive zero-knowledge proof given a public key.
