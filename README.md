@@ -9,13 +9,13 @@ Alice, who owns Monero (XMR), and Bob, who owns Bitcoin (BTC), want to swap thei
 They want to send funds to a special location on each chain (cross-chain) where each party can take control of the other chain (swap) and the other chain only (atomic).
 
 ### Normal scenario
-If both follow the protocol 4 transactions will be broadcast into both chains, 2 on Bitcoin and 2 on Monero. The first ones locks the funds and makes them ready for the trade on each chain. The second ones unlock the funds for one participant only and give knowledge to the other that take control of the other chain.
+If both follow the protocol 4 transactions will be broadcast into both chains, 2 on Bitcoin and 2 on Monero. The first ones locks the funds and makes them ready for the trade on each chain. The second one unlocks the funds for one participant only and gives knowledge to the other participant who takes control of the output on the other chain.
 
 ### Worst case scenario
-In the swap is cancelled, 3 Bitcoin transactions are needed instead of 2. This is to avoid a race condition that could allow Alice to gain XMR and BTC. The worst case is then 5 transactions in total.
+If the swap is cancelled, 3 Bitcoin transactions are needed instead of 2. This is to avoid a race condition that could allow Alice to gain XMR and BTC. Therefore the worst case is 5 transactions in total across both chains.
 
 ## Prerequisites
-Conditional executions must be allowed to achieve the swap and ensure atomicity. Bitcoin has a small stack-based script language that allows conditional execution and timelocks. On the other hand, Monero, with its privacy oriented RingCT design, provides single signature per UTXO. That means that control of UTXOs is only related to who controls the associated private keys. The challenge is then to move control of funds only with knowledge of some private key.
+Conditional executions must be possible in order to achieve trustless swap functionality and ensure atomicity. Bitcoin has a small stack-based script language that allows conditional execution and timelocks. On the other hand, Monero, with its privacy oriented RingCT design, provides single signature per UTXO. That means that control of UTXOs is only related to who controls the associated private keys. The challenge is then to move control of funds only with knowledge of some private key.
 
 This protocol is heavily based on an old Monero StackExchange post that can be found [here](https://monero.stackexchange.com/questions/894/can-you-trustlessly-trade-monero-for-bitcoin/895#895). The concept is roughly the same with some changes in the Bitcoin part, but this protocol is explained in more detail.
 
@@ -23,7 +23,7 @@ We describe some components required for each chain.
 
 ### Monero
 **2-out-of-2 scheme:**
-to enable multi-path execution in Monero, a 2-out-of-2 multisig is used. In reality we will not use any multi-signing protocol, the private spend key is split in two parts during the swap process but at the end one participant will gain knowledge of the full key. So it's more a secret sharing that a multisig and then it's not really a requirement for Monero.
+to enable multi-path execution in Monero, a 2-out-of-2 multisig is used. In reality we will not use any multi-signing protocol, instead, the private spend key is split in two parts during the swap process but at the end one participant will gain knowledge of the full key. So it's more a secret sharing than a multisig, therefore it's not really a requirement for Monero.
 
 **Pre-image non-interactive zero-knowledge proofs of knowledge:**
 to prove to the other participant that a valid pre-image to a given hash is known and within a range, e.g. > 0 and < l where l is related to edward25519 curve.
@@ -63,7 +63,7 @@ OP_ENDIF
 ```
 
 #### REFUND
-REFUND is a second P2SH used in the case the swap already started on-chain but is cancelled. This refund script is used as the only output of a transaction that spends the SWAPLOCK output with the 2-out-of-2 timelocked multisig.
+REFUND is a second P2SH used in case the swap already started on-chain but is cancelled. This refund script is used as the only output of a transaction that spends the SWAPLOCK output with the 2-out-of-2 timelocked multisig.
 
 ```
 OP_IF
@@ -84,8 +84,8 @@ A = aG
 
 We denote
 
-* the private key `a` as the private view key and `A` the public view key,
-* and the private key `x` as the private spend key and `X` the public spend key.
+* the private key `a` as the private view key and `A` as the public view key,
+* and the private key `x` as the private spend key and `X` as the public spend key.
 
 #### Partial keys
 We denote partial private keys as `a_0` and `a_1` such that
@@ -105,7 +105,7 @@ A_0 + A_1 = (a_0 + a1)G = aG = A
 The same is true for `x` with `x_0` and `x_1`.
 
 ### Zero-Knowledge proofs
-Two zero-knowledge proofs are required at the begining of the protocol for the trustlessness. They are quite symetric but Bob needs to prove one more information to Alice. We denote Alice's ZKP basic ZKP and Bob's one extended ZKP.
+Two zero-knowledge proofs are required at the beginning of the protocol for the trustlessness. They are quite symmetric but Bob needs to prove an extra piece of information to Alice. We denote Alice's ZKP basic ZKP and Bob's one extended ZKP.
 
 #### Basic ZKP
 Alice must prove to Bob that
@@ -117,7 +117,7 @@ h := H(x)
 
 Given X, h prove that:
 
-    it exists x such that X = xG and h = H(x)                        (1)
+    there exists x such that X = xG and h = H(x)                        (1)
 
 for H := SHA256
 ```
