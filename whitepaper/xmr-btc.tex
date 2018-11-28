@@ -1,0 +1,318 @@
+% This is based on the LLNCS.DEM the demonstration file of % the LaTeX macro
+% package from Springer-Verlag % for Lecture Notes in Computer Science, version
+% 2.4 for LaTeX2e as of 16. April 2010
+%
+% See http://www.springer.com/computer/lncs/lncs+authors?SGWID=0-40209-0-0-0
+% for the full guidelines.
+\documentclass{llncs}
+\usepackage{graphicx}
+\graphicspath{ {./assets/} }
+
+\usepackage{enumitem}
+\setlist[enumerate]{itemsep=2mm}
+
+\usepackage{dirtytalk}
+\usepackage{minted}
+%\usepackage{amsmath}
+%\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{extarrows}
+\usepackage{pdflscape}
+\usepackage[pass]{geometry}
+
+%
+% Tables
+% --------
+\usepackage[table]{xcolor}
+\usepackage{hhline}
+\usepackage{booktabs} % much better tables
+\usepackage{multirow} % allows to fuse rows
+\usepackage{array}    % manipulate array
+\usepackage{tabularx} % better tables
+
+% Define new tabularx column types:
+%  - R: streteched right aligned
+%  - C: stretched centered
+%  - N: left aligned, specified space
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+\newcolumntype{N}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcolumntype{S}{>{\hsize=.5\hsize}C}
+
+% Set row height multiplicator to provide more breathing space
+\renewcommand{\arraystretch}{1.5}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{bibliography.bib}
+
+\pagestyle{plain}
+\setcounter{page}{1}
+\pagenumbering{arabic}
+
+%\usepackage{pgfplots}
+%\pgfplotsset{width=6cm}
+\usepackage{float}
+\usepackage[caption = false]{subfig}
+
+\begin{document}
+
+\title{Bitcoin--Monero Cross-chain Atomic Swap}
+\author{Jo\"el Gugger\inst{1}}
+
+\authorrunning{Jo\"el Gugger et al.}
+\tocauthor{Jo\"el Gugger}
+\subtitle{{\normalsize\today{\small\ -- DRAFT}}}
+\institute{TrueLevel SA, Neuch\^atel, Switzerland\\ \email{joel@truelevel.io}}
+
+\maketitle
+
+\begin{abstract}
+    Cross-chain atomic swaps have been discussed for a very long time and are very useful tools. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, or the other swap participant.
+    \keywords{Bitcoin, Monero, Cross-chain swaps}
+\end{abstract}
+
+\section{Scenario}
+Alice, who owns Monero (XMR), and Bob, who owns Bitcoin (BTC), want to swap their funds. We assume that they already have negotiated the right amount plus some fees or what not.
+
+They want to send funds to a special location on each chain (cross-chain) where each party can take control of the other chain (swap) and the other chain only (atomic).
+
+\subsection{Normal scenario}
+If both follow the protocol 4 transactions will be broadcast into both chains, 2 on Bitcoin and 2 on Monero. The first ones locks the funds and makes them ready for the trade on each chain. The second one unlocks the funds for one participant only and gives knowledge to the other participant who takes control of the output on the other chain.
+
+\subsection{Worst case scenario}
+If the swap is cancelled, 3 Bitcoin transactions are needed instead of 2. This is to avoid a race condition that could allow Alice to gain XMR and BTC. Therefore the worst case is 5 transactions in total across both chains.
+
+\section{Prerequisites}
+Conditional executions must be possible in order to achieve trustless swap functionality and ensure atomicity. Bitcoin has a small stack-based script language that allows conditional execution and timelocks. On the other hand, Monero, with its privacy oriented RingCT design, provides single signature per UTXO. That means that control of UTXOs is only related to who controls the associated private keys. The challenge is then to move control of funds only with knowledge of some private key.
+
+This protocol is heavily based on a Monero StackExchange post discussing if it's possible to trade Monero and Bitcoin in a trustless manner \cite{MoneroStackexchangeSwap}. The concept is roughly the same with some changes in the Bitcoin part, but this protocol is explained in more detail.
+
+Requirements for activated features for each chain are a bit different that the StackExchange post. We describe all components needed on and off-chain.
+
+\subsection{Monero}
+
+\subsubsection{2-out-of-2 shared secret:}
+to enable multi-path execution in Monero. A 2-out-of-2 multisig like protocol is used to create the 2-out-of-2 shared secret. In reality we will not use any multi-signing protocol, instead, the private spend key is split in two parts during the swap process but at the end one participant will gain knowledge of the full key.
+
+\subsubsection{Pre-image non-interactive zero-knowledge proofs of knowledge:}
+to prove to the other participant that a valid pre-image $\alpha$ to a given hash is known and within a range, e.g. $0 < \alpha < l$ where $l$ is related to \texttt{edward25519} curve.
+
+\subsubsection{\texttt{edward25519} private key non-interactive zero-knowledge proofs of knowledge:}
+to prove to the other participant that a valid private key is known, e.g. signatures are valid non-interactive zero-knowledge proof given a public key.
+
+\subsection{Bitcoin}
+\subsubsection{Timelock:}
+to enable new execution paths after some predefined amount of time, i.e. cancelling the swap even after having locked funds on-chain.
+
+\subsubsection{Hashlock:}
+to reveal secrets to the other participant. Hashlocks are mini-scripts that require the sender to reveal some data (a pre-image) associated with a given hash.
+
+\subsubsection{2-out-of-2 multisig:}
+to create a refund path accessible only by the two participants.
+
+\subsubsection{Pre-image non-interactive zero-knowledge proofs of knowledge:}
+to prove to the other participant that a valid pre-image $\beta$ to a given hash is known and within a range, e.g. $0 < \beta < 2^{256} + 1$.
+
+\subsection{Curves parameters}
+Bitcoin and Monero does not use the same elliptic curve. Bitcoin use \texttt{secp256k1} curve from \textit{Standards for Efficient Cryptography (SEC)} with \texttt{ECDSA} while Monero, based on CryptoNote, use \texttt{Curve25519}, hereinafter \texttt{edward25519}, from Daniel J. Bernstein with \texttt{EdDSA} as describe in CryptoNote whitepaper \cite{CerRes10, van2013cryptonote}. We denote curves parameters for
+
+\subsubsection{\texttt{edward25519}} as
+\begin{equation}
+\begin{split}
+    q&: \text{a prime number;}\ a = 2^{255} - 19 \\
+    d&: \text{an element of } \mathbb{F}_q;\ d = - 121665/121666 \\
+    E&: \text{an elliptic curve equation};\ -x^2 + y^2 = 1 + dx^2y^2 \\
+    G&: \text{a base point};\ G = (x, -4/5) \\
+    l&: \text{a base point order};\ l = 2^{252} + \scriptsize\text{27742317777372353535851937790883648493} \\
+\end{split}
+\end{equation}
+
+\subsubsection{\texttt{secp256k1}} as
+\begin{equation}
+\begin{split}
+    p&: \text{a prime number;}\ p = 2^{256} - 2^{32} - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1 \\
+    a&: \text{an element of } \mathbb{F}_p;\ a = 0 \\
+    b&: \text{an element of } \mathbb{F}_p;\ b = 7 \\
+    E'&: \text{an elliptic curve equation};\ y^2 = x^3 + bx + a \\
+    G'&: \text{a base point};\ G' = \\ (&\scriptsize\texttt{0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798},\\ &\scriptsize\texttt{0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8}) \\
+\end{split}
+\end{equation}
+
+\section{Protocol}
+The protocol moves XMR funds into an address (e.g. 2-out-of-2 multisig) where each participant controls half of the key. We then use the Bitcoin scripting language to reveal one or the other half of the private spend key. Bitcoin transactions are designed in such a way that if a participant follows the protocol he can't terminate with a loss.
+
+If the deal goes through, Alice spends the BTC by revealing her half private key that allows Bob to spend the XMR. If the deal is cancelled, Bob spends the BTC by revealing his half private key that allows Alice to spend the XMR, both lose chain fees, in this case Bob is disadvantaged because of the 3 "heavy" BTC transactions.
+
+\subsection{Design}
+We define the standard protocol execution between Alice and Bob.
+
+\begin{figure}[H]
+    \begin{table}[H]
+      \centering
+      \begin{scriptsize}
+      {\renewcommand{\arraystretch}{1.2}%
+      \begin{tabular}{ | l l l | }
+        \hline
+          \multicolumn{1}{|c}{Alice (XMR)} &  & \multicolumn{1}{c|}{Bob (BTC)} \\
+          & & \\
+          $a_0 \xleftarrow{R} [1, l-1]$ & & $a_1 \xleftarrow{R} [1, l-1]$ \\
+          $x_0 \xleftarrow{R} [1, l-1]$ & & $x_1 \xleftarrow{R} [1, l-1]$ \\
+          $X_0 \leftarrow x_0G$ & & $X_1 \leftarrow x_1G$ \\
+          $b_a \xleftarrow{R} [1, p-1]$ & & $b_b \xleftarrow{R} [1, p-1]$ \\
+          $B_a \leftarrow b_aG'$ & & $B_b \leftarrow b_bG'$ \\
+          $h_0 \leftarrow \mathcal{H}(x_0)$ & & $h_1 \leftarrow \mathcal{H}(x_1)$ \\
+          & & $s \xleftarrow{R} \mathcal{Z}(2^{256})$ \\
+          & & $h_2 \leftarrow \mathcal{H}(s)$ \\
+          $z_0 \leftarrow \texttt{zkp}(x_0)$ & & $z_1 \leftarrow \texttt{zkp}(x_1, s)$ \\
+           & & \\
+          \multicolumn{3}{|c|}{$\xlongleftrightarrow{\langle a_0, a_1, X_0, X_1, B_a, B_b, h_0, h_1, h_2, z_0, z_1 \rangle}$} \\
+          $\text{verify}(a_1, X_1, B_b, z_1)$ & & $\text{verify}(a_0, X_0, B_a, z_0)$ \\
+          & $a \equiv a_0 + a_1 \pmod l$ & \\
+          & $A = aG$ & \\
+          & $X = X_0 + X_1$ & \\
+          & & create $\text{Btx}_1$ \\
+          & & create $\text{Btx}_2$ \\
+          & & sign($\text{Btx}_2$) \\
+          \multicolumn{3}{|c|}{$\xleftarrow{\langle \text{Btx}_1, \text{Btx}_2 \rangle}$} \\
+          verify($\text{Btx}_1, \text{Btx}_2$) & & \\
+          sign($\text{Btx}_2$) & & \\
+          \multicolumn{3}{|c|}{$\xrightarrow{\langle \text{Btx}_2 \text{ signed} \rangle}$} \\
+          & & verify($\text{Btx}_2$ signed) \\
+          & & sign($\text{Btx}_1$) \\
+          & & broadcast($\text{Btx}_1$) \\
+          \multicolumn{3}{|c|}{$\xleftarrow{(\text{watch Btx}_1)}$} \\
+          wait $n$ confirmations & & \\
+          create Xtx w/ $(A, X)$ & & \\
+          sign(Xtx) & & \\
+          broadcast(Xtx) & & \\
+          \multicolumn{3}{|c|}{$\xrightarrow{(\text{watch Xtx w/ } (A, X))}$} \\
+          & & wait $n'$ confirmations \\
+          & & verify(Xtx) w/ $(A, X)$ \\
+          \multicolumn{3}{|c|}{$\xleftarrow{\langle s \rangle}$} \\
+          spend($\text{Btx}_1$) w/ $\langle x_0, b_a, s \rangle$ & & \\
+          \multicolumn{3}{|c|}{$\xrightarrow{\text{watch Btx}_1}$} \\
+          & & $x \equiv x_0 + x_1 \pmod l$ \\
+          & & spend Xtx w/ $\langle x, a \rangle$ \\
+        \hline
+      \end{tabular}}
+      \end{scriptsize}
+    \end{table}
+
+  \caption{Cross-chain atomic swap protocol for Bitcoin--Monero}
+  \label{fig:protocol}
+\end{figure}
+
+\subsection{Parameters}
+Two timelocks $t_0, t_1$ are needed. $t_0$ define the time window during it is sage to execute the trade, after $t_0$ the refund process can start. $t_1$ define the response time during what Bob needs to react and disclose his private Monero share.
+
+\subsection{2-out-of-2 private XMR spend key}
+Full XMR private key is a pair of \texttt{edward25519} private/public keys. The first pair is called view keys and the second spend keys. We use small letter to denote private keys and caps for public keys such that
+$$A = aG$$
+
+We denote
+\begin{enumerate}[label=(\roman*)]
+\item the private key $a$ as the private view key and $A$ as the public view key,
+\item and the private key $x$ as the private spend key and $X$ as the public spend key.
+\end{enumerate}
+
+\subsubsection{Partial keys}
+We denote partial private keys as $a_0$ and $a_1$ such that
+$$a_0 + a_1 \equiv a \pmod l$$
+
+And then
+\begin{equation}
+\begin{split}
+    a_0G &= A_0 \\
+    a_1G &= A_1 \\
+    A_0 + A_1 = (a_0 + a1)G = aG &= A
+\end{split}
+\end{equation}
+
+The same holds for $x$ with $x_0$ and $x_1$.
+
+\subsection{Zero-Knowledge proofs}
+Two zero-knowledge proofs are required at the beginning of the protocol for the trustlessness. They are quite symmetric but Bob needs to prove an extra piece of information to Alice. We denote Alice's ZKP basic ZKP and Bob's one extended ZKP.
+
+\subsubsection{Basic ZKP}
+Alice must prove to Bob with
+\begin{equation}
+\begin{split}
+    x_0 &= \text{valid private key on edward25519 curve} \\
+    X_0 &= x_0G \\
+    h_0 &= \mathcal{H}(x_0) \\
+\end{split}
+\end{equation}
+
+that given $X_0$ and $h_0$
+\begin{equation}
+\begin{split}
+    \exists x_0 \mid X_0 = x_0G \land h_0 = \mathcal{H}(x_0) \land x_0 \in [1, 2^{256}]
+\end{split}
+\end{equation}
+
+\subsubsection{Extended ZKP}
+Bob must prove to Alice with
+\begin{equation}
+\begin{split}
+    x_1 &= \text{valid private key on edward25519 curve} \\
+    X_1 &= x_1G \\
+    h_1 &= \mathcal{H}(x) \\
+    s &= \text{random 32 bytes data} \\
+    h_2 &= \mathcal{H}(s)
+\end{split}
+\end{equation}
+
+that given $X_1$, $h_1$ and $h_2$
+\begin{equation}
+\begin{split}
+    \exists x_1, s \mid X_1 = x_1G \land h_1 = \mathcal{H}(x_1) \land h_2 = \mathcal{H}(s) \land x_1, s \in [1, 2^{256}]
+\end{split}
+\end{equation}
+
+\subsection{Bitcoin scripts}
+
+\subsubsection{\texttt{SWAP\_LOCK}}
+is a \texttt{P2SH} used to lock funds and defines the two execution paths: (1) normal [swap execution] and (2) refund [swap abortion].
+
+\begin{minted}[escapeinside=||,mathescape=true]{text}
+OP_IF
+    <|$B_a$|> OP_CHECKSIGVERIFY
+    OP_SHA256 <|$h_0$|> OP_EQUALVERIFY
+    OP_SHA256 <|$h_2$|> OP_EQUAL
+OP_ESLE
+    2 <|$B_a$|> <|$B_b$|> 2 OP_CHECKMULTISIGVERIFY
+    <|$t_0$|> OP_CHECKSEQUENCE
+OP_ENDIF
+\end{minted}
+
+\subsubsection{\texttt{REFUND}}
+is an other \texttt{P2SH} used in case the swap already started on-chain but is cancelled. This refund script is used to lock the only output of a transaction that spends the \texttt{SWAP\_LOCK} output with the 2-out-of-2 timelocked multisig.
+
+\begin{minted}[escapeinside=||,mathescape=true]{text}
+OP_IF
+    <|$B_b$|> OP_CHECKSIGVERIFY
+    OP_SHA256 <|$h_1$|> OP_EQUAL
+OP_ESLE
+    <|$B_a$|> OP_CHECKSIGVERIFY
+    <|$t_1$|> OP_CHECKSEQUENCE
+OP_ENDIF
+\end{minted}
+
+\subsection{Transactions}
+\subsubsection{Btx$_1$}
+is a Bitcoin transaction with $\geq 1$ inputs from Bob and one output to \texttt{SWAP\_LOCK}.
+
+\subsubsection{Btx$_2$}
+is a Bitcoin transaction with 1 input consuming \texttt{SWAP\_LOCK} with the 2-out-of-2 timelocked multisig and one output to \texttt{REFUND}.
+
+\subsubsection{Xtx}
+is a Monero transaction that sends fund to the address $(A,X)$.
+
+%\section{Acknowledgement} Loan Ventura, Thomas Roulin and Nicolas Huguenin are acknowledged for their helpful contribution and comments during the completion of this work.
+
+%
+% ---- Bibliography ----
+%
+\printbibliography
+
+\end{document}
