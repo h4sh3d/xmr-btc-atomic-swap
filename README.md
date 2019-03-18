@@ -1,21 +1,35 @@
-Cross-chain Bitcoin & Monero Atomic Swap
+Bitcoin & Monero Cross-chain Atomic Swap
 ===
 
-Cross-chain atomic swaps have been discussed for a very long time and are very useful tools. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, or the other swap participant.
+[Paper](./whitepaper/xmr-btc.pdf)
 
-## Scenario
-Alice, who owns Monero (XMR), and Bob, who owns Bitcoin (BTC), want to swap their funds. We assume that they already have negotiated the right amount plus some fees or what not.
+## Introduction
 
-They want to send funds to a special location on each chain (cross-chain) where each party can take control of the other chain (swap) and the other chain only (atomic).
+Cross-chain atomic swaps have been discussed for a very long time and are very useful tools. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, nor the other swap participant. We propose a swap between two parties, one holding bitcoins and the other monero.
 
-### Normal scenario
-If both follow the protocol 4 transactions will be broadcast into both chains, 2 on Bitcoin and 2 on Monero. The first ones locks the funds and makes them ready for the trade on each chain. The second one unlocks the funds for one participant only and gives knowledge to the other participant who takes control of the output on the other chain.
+We describe a protocol for an on-chain atomic swap between Monero and Bitcoin, but the protocol can be generalize to Monero and any other cryptocurrencies that fulfill the same requirements as Bitcoin.
 
-### Worst case scenario
-If the swap is cancelled, 3 Bitcoin transactions are needed instead of 2. This is to avoid a race condition that could allow Alice to gain XMR and BTC. Therefore the worst case is 5 transactions in total across both chains.
+This protocol is heavily based on a Monero StackExchange post discussing if it's possible to trade Monero and Bitcoin in a trustless manner \cite{MoneroStackexchangeSwap}. The concept is roughly the same, with some changes in the Bitcoin part and is explained in more detail; they send funds to a special location on each chain (cross-chain) where each party can take control of the other chain (swap) and the other chain only (atomic).
 
-## Prerequisites
-Conditional executions must be possible in order to achieve trustless swap functionality and ensure atomicity. Bitcoin has a small stack-based script language that allows conditional execution and timelocks. On the other hand, Monero, with its privacy oriented current RingCT design, provides only signatures to unlock UTXOs. That means that control of UTXOs is only related to who controls the associated one-time private keys. The challenge is then to move control of funds only with knowledge of some private keys.
+## Known limitations
+To provide finality (if at least one participant is still online) we allow the worst case scenario to end up with one participant loosing his funds, but this case should only happen with negligible probability.
 
-This protocol is heavily based on a 2016 Monero StackExchange post that can be found [here](https://monero.stackexchange.com/questions/894/can-you-trustlessly-trade-monero-for-bitcoin/895#895). The concept is roughly the same with some changes and is explained in more detail.
+**Rationale**: This choice is made to avoid the following case: if monero are locked, Alice will be able to refund them only if Bob refund his bitcoins first, we need an incentive mechanisme to force Bob to spend his refund.
 
+Fees are different from one chain to the other because of internal blockchain parameters and transaction complexity. Because the Bitcoin blockchain is used as a decision engine transactions are, related to Bitcoin transactions, complexe and then expensive. Thus making the Bitcoin chain expensier than the Monero chain.
+
+Speed in cross-chain atomic swap is hard to achieve, the slowest chain and the number of confirmations dictate the speed of the protocol, making front runs possible in some cases.
+
+
+## Building laTex
+
+A `Makefile` is provided into `whitepaper` folder to compile the project, use
+
+```
+make
+```
+
+About
+===
+
+This is a research project sponsored by TrueLevel, developed by h4sh3d.
