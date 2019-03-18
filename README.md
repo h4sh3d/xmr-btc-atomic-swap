@@ -1,3 +1,5 @@
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+
 Bitcoin & Monero Cross-chain Atomic Swap
 ===
 
@@ -21,7 +23,7 @@ Fees are different from one chain to the other because of internal blockchain pa
 Speed in cross-chain atomic swap is hard to achieve, the slowest chain and the number of confirmations dictate the speed of the protocol, making front runs possible in some cases.
 
 
-## Building laTex
+## Building LaTex
 
 A `Makefile` is provided into `whitepaper` folder to compile the project, use
 
