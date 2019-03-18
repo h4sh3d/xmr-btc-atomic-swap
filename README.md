@@ -15,7 +15,7 @@ If both follow the protocol 4 transactions will be broadcast into both chains, 2
 If the swap is cancelled, 3 Bitcoin transactions are needed instead of 2. This is to avoid a race condition that could allow Alice to gain XMR and BTC. Therefore the worst case is 5 transactions in total across both chains.
 
 ## Prerequisites
-Conditional executions must be possible in order to achieve trustless swap functionality and ensure atomicity. Bitcoin has a small stack-based script language that allows conditional execution and timelocks. On the other hand, Monero, with its privacy oriented RingCT design, provides single signature per UTXO. That means that control of UTXOs is only related to who controls the associated private keys. The challenge is then to move control of funds only with knowledge of some private key.
+Conditional executions must be possible in order to achieve trustless swap functionality and ensure atomicity. Bitcoin has a small stack-based script language that allows conditional execution and timelocks. On the other hand, Monero, with its privacy oriented current RingCT design, provides only signatures to unlock UTXOs. That means that control of UTXOs is only related to who controls the associated one-time private keys. The challenge is then to move control of funds only with knowledge of some private keys.
 
-This protocol is heavily based on a 2016 Monero StackExchange post that can be found [here](https://monero.stackexchange.com/questions/894/can-you-trustlessly-trade-monero-for-bitcoin/895#895). The concept is roughly the same with some changes in the Bitcoin part, but this protocol is explained in more detail.
+This protocol is heavily based on a 2016 Monero StackExchange post that can be found [here](https://monero.stackexchange.com/questions/894/can-you-trustlessly-trade-monero-for-bitcoin/895#895). The concept is roughly the same with some changes and is explained in more detail.
 
