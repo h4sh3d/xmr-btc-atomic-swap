@@ -67,83 +67,89 @@
 \maketitle
 
 \begin{abstract}
-    Cross-chain atomic swaps have been discussed for a very long time and are very useful tools. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, nor the other swap participant. We propose a swap between two parties, one holding bitcoin and the other monero.
-    \keywords{Bitcoin, Monero, Cross-chain swaps}
+    Cross-chain atomic swaps have been discussed for a very long time and are very useful tools. In blockchains where hashed timelock contracts are doable atomic swaps are already deployed, but when one blockchain doesn't have this capability it becomes a challenge. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, nor the other swap participant.
+    We propose a swap between two participants, one holding bitcoin and the other monero, in which when both follow the protocol their funds are not at risk at any moment. The protocol does not require timelocks on Monero side nor script capabilities.
+    \keywords{Bitcoin, Monero, atomic swaps}
 \end{abstract}
 
 \section{Introduction}
-We describe a protocol for an on-chain atomic swap between Monero and Bitcoin, but the protocol can be generalized for Monero and any other cryptocurrencies that fulfill the same requirements as Bitcoin.
+We describe a protocol for an on-chain atomic swap between Monero and Bitcoin, but the protocol can be generalized for Monero and any other cryptocurrencies that fulfill the same requirements as Bitcoin, see \ref{bitcoinPrerequisites}.
 
-This protocol is heavily based on a Monero StackExchange post discussing if it's possible to trade Monero and Bitcoin in a trustless manner \cite{MoneroStackexchangeSwap}. The concept is roughly the same, with some changes in the Bitcoin part and is explained in more detail; they send funds to a special location on each chain (cross-chain) where each party can take control of the funds on the other chain (swap) only (atomic; i.e. claiming of funds on either chain is mutually exclusive from the ability to claim funds from another chain).
+This protocol is heavily based on a Monero StackExchange post discussing if it's possible to trade Monero and Bitcoin in a trustless manner \cite{MoneroStackexchangeSwap}. The concept is roughly the same, with changes in Bitcoin construction, less prerequisites in Monero, and more detailed explainations.
+
+Participants send funds into a specific address generated during the process (the lock) on each chain (cross-chain) where each party can take control of the funds on the other chain (swap) only (atomic; i.e. claiming of funds on either chain is mutually exclusive from the ability to claim funds from another chain.)
 
 \subsection{Known limitations}
-To provide finality (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up loosing his funds, but only in the case where they do not follow the protocol (which includes remaining online during pending swap). The rationale behind this design is explained in \ref{worstCaseRationale}.
+To provide liveness (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up loosing funds (by not being able to claim on the other chain). This can happen in the case where they do not follow the protocol, e.g. remaining online during pending swap or claiming funds in time. The rationale behind this design is explained in \ref{worstCaseRationale}.
 
-Fees are different from one chain to the other partly because of internal blockchain parameters & transaction complexity, and also due to external factors such as demand for blockspace. Note that within this protocol the Bitcoin blockchain is used as a decision engine, where we use complex features of bitcoin, which causes transactions on the bitcoin side to be more expensive. These two factors combined make the Bitcoin transactions more expensive in general than those on the Monero chain.
+Fees are different from one chain to the other partly because of internal blockchain parameters \& transaction complexity, and also due to external factors such as demand for blockspace. Note that within this protocol the Bitcoin blockchain is used as a decision engine, where we use advanced features of bitcoin, which causes bigger transactions on the bitcoin side. These two factors combined make the Bitcoin transactions more expensive in general than those on the Monero chain.
 
-Instant user feedback in a cross-chain atomic swap is hard to achieve.  The slowest chain and the number of confirmations required by each participant to consider a transaction final, dictates the speed of the protocol, making front runs possible in some setups.
+Instant user feedback in a cross-chain atomic swap is hard to achieve.  The slowest chain and the number of confirmations required by each participant to consider a transaction final, dictates the speed of the protocol, making front runs possible in some setups. But the protocol can be extended to avoid front runs within certain setups. It is worth noting that front runs cannot be enforced to the other participant, thus making the worst case scenario a redund with fee costs on each chain.
 
 \section{Scenario}
-We describe the participants and their incentives. Alice, who owns Monero (XMR), and Bob, who owns Bitcoin (BTC), want to swap funds. We assume that they already have negotiated the price in advance (i.e. amount of bitcoin for amount of monero to swap). This negotiation can also be integrated into the protocol, for example by swap services who provide a price to their customers.
+We describe the participants and their incentives. Alice, who owns monero (XMR), and Bob, who owns bitcoin (BTC), want to swap funds. We assume that they already have negotiated the price in advance (i.e. amount of bitcoin for amount of monero to swap.) This negotiation can also be integrated into the protocol, for example by swap services who provide a price to their customers.
 
-Both participants wish to only have two possible execution paths (which are mutually exclusive to each other) when executing the protocol: (1) the protocol succeeds and Alice gets bitcoin, Bob gets monero, or (2) the protocol fails and both keep their original funds minus the minimum transaction fees.
+Both participants wish to only have two possible execution paths (which are mutually exclusive to each other) when executing the protocol: (1) the protocol succeeds and Alice gets bitcoin, Bob gets monero, or (2) the protocol fails and both keep their original funds minus the minimum transaction fees possible.
 
 \subsection{Successful swap}
-If both participants follow the protocol there will be 4 transactions broadcast in total, 2 on Bitcoin blockchain and 2 on Monero blockchain. The first ones on each chain lock the funds and makes them ready for the trade on each chain. The second ones unlock the funds for one participant only and gives knowledge to the other participant who takes control of the output on the other chain.
+If both participants follow the protocol there will be four transactions broadcast in total, two on Bitcoin blockchain and two on Monero blockchain. The first ones on each chain lock the funds and makes them ready for the trade on each chain. The second ones unlock the funds for one participant only and gives knowledge to the other participant who takes control of the output on the other chain.
 
-This is the optimal execution of the protocol, requiring the minimum number of transactions and only locking funds for the minimum confirmation on each chain depending on the level of security expected by each participant (how many confirmations each expects for the funding transaction) and no timelocks.
+This is the optimal execution of the protocol, requiring no timelocks, the minimum number of transactions and only locking funds for the minimum confirmation on each chain depending on the level of security expected by each participant, i.e. how many confirmations each expects for the funding transaction to be considered final and continue to the next step of the process.
 
 \subsection{Swap correctly aborted}
-When locking the bitcoin, after a timelock Alice or Bob can start the process of refunding the locked funds. In this case the monero might not be locked yet, if no monero are locked the refund process will just refund the bitcoin, otherwise Alice will learn enough information to refund her monero too.
+When locking the bitcoin, after a timelock, Alice or Bob can start the process of refunding the locked funds. At that moment the monero might not be locked yet, if no monero are locked the refund process will just refund the bitcoin, otherwise Alice will learn enough information to refund her monero too.
 
-When the refund transaction is broadcast Bob has to spend the refund before some timelock, otherwise he might end up loosing his bitcoin without getting any monero.  Because of this we can describe this as an interactive protocol from Bobs perspective.
+When the refund transaction is broadcast Bob has to spend the refund before some timelock, otherwise he might end up loosing his bitcoin without getting any monero.  Because of this we can describe this as an interactive protocol from Bob's perspective, i.e. Bob cannot go offline or not react during the swap but Alice can.
 
 \subsection{Worst case scenario}
-If the swap is cancelled with the refund process and Bob does not spend his funds before the timelock, Alice can claim the refund. Thus one participant, Bob, ends up underwater and 3 Bitcoin transactions are needed instead of 2.
+If the swap is cancelled with the refund process and Bob does not spend his refund before the timelock, Alice can claim the refund without revealing the knowledge needed to Bob to claim on the other chain. Thus one participant, Bob, ends up underwater and three Bitcoin transactions are needed instead of two.
 
 \subsubsection{Rationale}
 \label{worstCaseRationale}
-This choice is made to avoid the following case: if monero are locked, Alice will be able to refund them only if Bob refunds his bitcoin first.  We need an incentive mechanism to force Bob to spend his refund to prevent a deadlock/stalemate.
+This choice is made to avoid the following case: if monero are locked, Alice will be able to refund them only if Bob refunds his bitcoin first. We need an incentive mechanism to force Bob to spend his refund to prevent a deadlock in the refund process or compensate Alice if Bob does not follow the protocol correctly.
 
 \section{Prerequisites}
-As previously described, conditional execution must be possible in order to achieve a swap with atomicity. Bitcoin has a small stack-based script language that allows for conditional execution and timelocks. On the other hand Monero with its privacy oriented RingCT design provides only signatures to unlock UTXOs. Meaning that control of UTXOs is only related to who controls the associated private keys. The challenge is then to move control of funds only with knowledge of some private keys.
+As previously described, conditional execution must be possible in order to achieve a swap with atomicity. Bitcoin has a small stack-based script language that allows for conditional execution and timelocks. On the other hand, at the moment, Monero with its privacy oriented RingCT design provides only signatures to unlock UTXOs. Meaning that control of UTXOs is only related to who controls the associated private keys. The challenge is then to move control of funds only with knowledge of some private keys.
 
 \subsection{Monero}
 Monero does not require any particular primitives on-chain (hashlocks, timelocks), all building blocks are off-chain primitives. Thus we need to provide proofs of the correct initialization of the protocol, which might be the hardest part.
 
 \subsubsection{Secret share,}
-to enable a basic two-path execution in Monero. The Monero swap private spend key is split into two secret shares $k^s_a, k^s_b$. Participants will not use any multi-signing protocol, instead, the private spend key shares are distributed during initialization of the swap process where one participant will gain knowledge of the full key $k^s \equiv k^s_a + k^s_b$ at the end of the protocol execution, either for a completed swap or for an aborted swap.
+to enable a basic two-path execution in Monero. The Monero swap private spend key is split into two secret shares $k^s_a, k^s_b$. Participants will not use any multi-signing protocol, instead, the private spend key shares are distributed during initialization of the swap process where one participant will gain knowledge of the full key $k^s \equiv k^s_a + k^s_b \pmod l$ at the end of the protocol execution, either for a completed swap or for an aborted swap.
 
-\subsubsection{Pre-image non-interactive zero-knowledge proofs of knowledge,}
-to prove to the other participant that a valid pre-image $\alpha$ to a given hash $h = \mathcal{H}(\alpha)$ is known and within a specific range, e.g. $\alpha \in [1, l-1]$ where $l$ is related to \texttt{edward25519} curve and $\mathcal{H}$ is \texttt{SHA256}. The scalar $\alpha$ must be serialized in a standard way.
+\subsubsection{Pre-image non-interactive zero-knowledge proof of knowledge}
+proves to the other participant that a valid pre-image $\alpha$ to a given hash $h = \mathcal{H}(\alpha)$ is known and within a specific range, e.g. $\alpha \in [1, l-1]$ where $l$ is related to \texttt{edward25519} curve and $\mathcal{H}$ is the \texttt{SHA256} algorithm. The scalar $\alpha$ must be serialized in a standard way.
 
-\subsubsection{\texttt{Edward25519} private key non-interactive zero-knowledge proofs of knowledge}
-to prove to the other participant that a valid private key $x$ is known for a public key $X$, e.g. signatures are non-interactive zero-knowledge proofs given some public keys.
+\subsubsection{\texttt{Edward25519} private key non-interactive zero-knowledge proof of knowledge}
+proves to the other participant that a valid private key $x$ on \texttt{edward25519} is known for a given public key $X$, e.g. signatures are non-interactive zero-knowledge proof of knowledge given some public keys.
 
 \subsection{Bitcoin}
-The bitcoin transactions in this protocol require SegWit activation in order to be able to chain unbroadcast transactions (i.e. not Bitcoin Cash). These requirements must be fulfilled for any other cryptocurrencies with a bitcoin style UTXO model [such as Litecoin] which wish to compatible with this protocol.
+\label{bitcoinPrerequisites}
+The bitcoin transactions in this protocol require \texttt{SegWit} activation in order to be able to chain unbroadcast transactions. These requirements must be fulfilled for any other cryptocurrencies with a bitcoin style UTXO model [such as Litecoin] which wish to compatible with this protocol (i.e. Bitcoin Cash is not compatible.)
 
 \subsubsection{Timelock,}
-to enable new execution paths after some predefined amount of time, e.g. start the refund process after having locked funds on-chain without creating a race condition.
+to enable new execution paths after some predefined amount of time, e.g. start the refund process after having locked funds on-chain without creating a race condition. It is worth noting that we do not require timelocks for Monero.
 
 \subsubsection{Hashlock,}
 to reveal secrets to the other participant. Hashlocks are primitives that require one to reveal some data (a pre-image) associated with a given hash to be allowed to spend the associated UTXO.
 
 \subsubsection{2-out-of-2 multisig,}
-to create a common path accessible only by the two participants if both agree.
+to create a common path accessible only by the two participants if both agree. In this protocol we use the on-chain option  but off-chain multi-signature scheme can replace it.
 
 \subsection{Curves parameters}
 \label{curveParams}
-Bitcoin and Monero does not use the same elliptic curves. Bitcoin uses the \texttt{secp256k1} curve from \textit{Standards for Efficient Cryptography (SEC)} with \texttt{ECDSA} while Monero, based on the second version of CryptoNote, uses \texttt{Curve25519}, hereinafter also \texttt{edward25519}, from Daniel J. Bernstein \cite{CerRes10, van2013cryptonote}. We denote curve parameters for
+Bitcoin and Monero does not use the same elliptic curves. Bitcoin uses the \texttt{secp256k1} curve from \textit{Standards for Efficient Cryptography (SEC)} with the \texttt{ECDSA} algorithm while Monero, based on the second version of CryptoNote \cite{van2013cryptonote}, uses \texttt{Curve25519}, hereinafter also \texttt{edward25519}, from Daniel J. Bernstein \cite{CerRes10}.
+
+We denote curve parameters for
 
 \subsubsection{\texttt{edward25519}} as
 \begin{equation}
 \begin{split}
-    q&: \text{a prime number;}\ a = 2^{255} - 19 \\
+    q&: \text{a prime number;}\ q = 2^{255} - 19 \\
     d&: \text{an element of } \mathbb{F}_q;\ d = - 121665/121666 \\
     E&: \text{an elliptic curve equation};\ -x^2 + y^2 = 1 + dx^2y^2 \\
     G&: \text{a base point};\ G = (x, -4/5) \\
-    l&: \text{a base point order};\ l = 2^{252} + \text{\scriptsize27742317777372353535851937790883648493} \\
+    l&: \text{the base point order};\ l = 2^{252} + \text{\scriptsize27742317777372353535851937790883648493} \\
 \end{split}
 \end{equation}
 
@@ -159,16 +165,44 @@ Bitcoin and Monero does not use the same elliptic curves. Bitcoin uses the \text
 \end{equation}
 
 \section{Protocol}
-In this chapter we describe the protocol for Alice and Bob to swap their funds atomically and without trusting each other.
+%In this chapter we describe the protocol for Alice and Bob to swap their funds atomically and without trusting each other.
+
+The overall protocol is as follows: Alice moves the monero into an address where each participant controls half of the private spend key. The Bitcoin scripting language is then used to reveal one of the halfs of the private spend key depending on which participant claims the bitcoin. Depending on who reveals the key share, the locked monero changes ownership. Bitcoin transactions are designed in such a way that if a participant follows the protocol he can't terminate with a loss.
+
+If the deal goes through, Alice spends the bitcoin by revealing her private key share, thus allowing Bob to spend the locked monero. If the deal is cancelled, Bob spends the bitcoin after the first timelock by revealing his private key share thus allowing Alice to spend the monero, in both cases minus transaction fees.
+
+The full protocol is shown in Figure \ref{fig:protocol}.
+
+\subsection{Zero-Knowledge proofs}
+Zero-knowledge proofs are required at the beginning of the protocol for trustlessness. The protocol uses hashes as commitments of private keys, but we cannot check the hash of the other participant before it goes on-chain. Thus we need to provide a proof that the hash used in the Bitcoin script is the serialized private share and not other random data.
+%Two zero-knowledge proofs are required at the beginning of the protocol for trustlessness. They are quite symmetric but Bob needs to prove an extra piece of information to Alice. We denote Alice's ZKP basic ZKP and Bob's one extended ZKP.
+
+\subsubsection{ZKP}
+Alice and Bob must prove to each other with $i \in \{a, b\}$
+\begin{equation}
+\begin{split}
+    k^s_i &\leftarrow \text{valid scalar on \texttt{edward25519} curve} \\
+    K^s_i &= k^s_iG \\
+    h_i &= \mathcal{H}(k^s_i) \text{ for $\mathcal{H}$ as \texttt{SHA256}} \\
+\end{split}
+\end{equation}
+
+that given $K^s_i$ and $h_i$
+\begin{equation}
+\begin{split}
+    \exists k^s_i \mid K^s_i = k^s_iG \land h_i = \mathcal{H}(k^s_i) \land k^s_i \in [1, l-1]
+\end{split}
+\end{equation}
+where $\mathcal{H}(k^s_i)$ is the hash of the 256-bit little-endian integer representation of $k^s_i$.
 
 \begin{figure}[H]
     \begin{table}[H]
-      \centering
-      {\renewcommand{\arraystretch}{1.2}%
-      \begin{tabular}{ | l l l | }
+        \centering
+      {\renewcommand{\arraystretch}{1.1}%
+      \begin{tabular}{ | l c l | }
         \hline
-          \multicolumn{1}{|c}{Alice (XMR)} &  & \multicolumn{1}{c|}{Bob (BTC)} \\
-          & & \\
+          \multicolumn{1}{|c}{Alice (XMR$\rightarrow$BTC)} &  & \multicolumn{1}{c|}{Bob (BTC$\rightarrow$XMR)} \\
+          & \textit{Initialization phase} & \\
           $k^v_a, k^s_a \xleftarrow{R} [1, l-1]$ & & $k^v_b, k^s_b \xleftarrow{R} [1, l-1]$ \\
           $K^s_a \leftarrow k^s_aG$ & & $K^s_b \leftarrow k^s_bG$ \\
           $b_a \xleftarrow{R} [1, p-1]$ & & $b_b \xleftarrow{R} [1, p-1]$ \\
@@ -183,7 +217,7 @@ In this chapter we describe the protocol for Alice and Bob to swap their funds a
           & $k^v \equiv k^v_a + k^v_b \pmod l$ & \\
           & $K^v = k^vG$ & \\
           & $K^s = K^s_a + K^s_b$ & \\
-          & & create $[\text{BTX}_\textit{lock}$, $\text{BTX}_\textit{refund}]$ \\
+          & \textit{Lock phase} & create $[\text{BTX}_\textit{lock}$, $\text{BTX}_\textit{refund}]$ \\
           & & sign $\text{BTX}_\textit{refund}$ \\
           \multicolumn{3}{|c|}{$\xleftarrow{\langle \text{BTX}_\textit{lock}, \text{BTX}_\textit{refund} \rangle}$} \\
           verify $[\text{BTX}_\textit{lock}$, $\text{BTX}_\textit{refund}]$ & & \\
@@ -197,7 +231,7 @@ In this chapter we describe the protocol for Alice and Bob to swap their funds a
           sign $\text{XTX}_\textit{lock}$ & & \\
           broadcast $\text{XTX}_\textit{lock}^\textit{signed}$ & & \\
           \multicolumn{3}{|c|}{$\xrightarrow{(\text{watch w/ } (k^v, K^s))}$} \\
-          & & verify $(K^v, K^s)$ w/ $(k^v, K^s)$ \\
+          & \textit{Swap phase} & verify $(K^v, K^s)$ w/ $(k^v, K^s)$ \\
           \multicolumn{3}{|c|}{$\xleftarrow{\langle s \rangle}$} \\
           spend $\text{BTX}_\textit{lock}$ w/ $\langle k^s_a, b_a, s \rangle$ & & \\
           \multicolumn{3}{|c|}{$\xrightarrow{\text{watch BTX}_\textit{lock}}$} \\
@@ -206,30 +240,28 @@ In this chapter we describe the protocol for Alice and Bob to swap their funds a
         \hline
       \end{tabular}}
     \end{table}
-  \caption{Cross-chain atomic swap protocol for Bitcoin--Monero}
+  \caption{Full protocol of cross-chain atomic swap for Bitcoin--Monero between two participants Alice and Bob with initialization, lock, and swap phases.}
   \label{fig:protocol}
 \end{figure}
 
-The overall protocol is as follows: Alice moves the monero into an address where each participant controls half of the private spend key. The Bitcoin scripting language is then used to reveal one of the halfs of the private spend key depending on which participant claims the bitcoin. Depending on who reveals the key share, the locked monero changes ownership. Bitcoin transactions are designed in such a way that if a participant follows the protocol he can't terminate with a loss.
-
-If the deal goes through, Alice spends the bitcoin by revealing her private key share, thus allowing Bob to spend the locked monero. If the deal is cancelled, Bob spends the bitcoin after the first timelock by revealing his private key share thus allowing Alice to spend the monero, in both cases minus transaction fees.
-
 \subsection{Time parameters}
-Two timelocks $t_0, t_1$ are defined. $t_0$ defines the time window during which it is safe to execute the trade, after $t_0$ the refund process may start, making the trade unsafe to complete because of a potential race condition (even if hard to exploit in reallity). $t_1$ defines the response time during which Bob is required to react and reveal his private Monero share to get his bitcoin back and allow Alice to redeem her monero (if she locked monero).
+Two timelocks $t_0, t_1$ are defined during the initialization phase. $t_0$ sets the time window during which it is safe to execute the trade, after $t_0$ the refund process may start, making the trade unsafe to complete because of a potential race condition (even if hard to exploit in reallity). $t_1$ sets the response time during which Bob is required to react and reveal his private Monero share to get his bitcoin back and allow Alice to redeem her monero (if monero have been locked).
 
 \subsection{Monero private keys}
-Monero private keys are pairs of \texttt{edward25519} private keys. The first key is called view key and the second is called spend key. We use small letters to denote private keys and caps for public keys such that
+Monero private keys are pairs of \texttt{edward25519} scalars. The first scalar is called private view key and the second is called private spend key. We use small letters to denote private keys and cappital letters for public keys such that
 $$X = xG$$
 Where $G$ is the generator element of the curve (see \ref{curveParams}). We denote
 \begin{enumerate}[label=(\roman*)]
-    \item the private key $k^v$ as the private view key and $K^v$ as the public view key,
+    \item the private key $k^v$ as the full private view key,
+    \item $K^v$ as the full public view key,
     \item $k^v_a$ as the private view key share of Alice and $k^v_b$ of Bob,
-    \item the private key $k^s$ as the private spend key and $K^s$ as the public spend key,
+    \item the private key $k^s$ as the full private spend key,
+    \item $K^s$ as the full public spend key,
     \item and $k^s_a$ as the private spend key share of Alice and $k^s_b$ of Bob.
 \end{enumerate}
 
 \subsubsection{Partial keys}
-We denote partial private keys as $k^s_a$ and $k^s_b$ such that
+We denote private key shares as $k^s_a$ and $k^s_b$ such that
 $$k^s_a + k^s_b \equiv k^s \pmod l$$
 
 And then
@@ -243,32 +275,10 @@ And then
 
 The same holds for $k^v$ with $k^v_a$ and $k^v_b$.
 
-\subsection{Zero-Knowledge proofs}
-Zero-knowledge proofs are required at the beginning of the protocol for trustlessness. The protocol uses hashes as commitments of private keys, but we cannot check the hash of the other participant before it goes on-chain. Thus we need to provide a proof that the hash used in the Bitcoin script is the serialized private share and not other random data.
-%Two zero-knowledge proofs are required at the beginning of the protocol for trustlessness. They are quite symmetric but Bob needs to prove an extra piece of information to Alice. We denote Alice's ZKP basic ZKP and Bob's one extended ZKP.
-
-\subsubsection{ZKP}
-Alice and Bob must prove to each other with
-\begin{equation}
-\begin{split}
-    k^s &= \text{valid scalar on \texttt{edward25519} curve} \\
-    K^s &= k^sG \\
-    h &= \mathcal{H}(k^s) \\
-\end{split}
-\end{equation}
-
-that given $K^s$ and $h$
-\begin{equation}
-\begin{split}
-    \exists k^s \mid K^s = k^sG \land h = \mathcal{H}(k^s) \land k^s \in [1, l-1]
-\end{split}
-\end{equation}
-where $\mathcal{H}(k^s)$ is the hash of the 256-bit little-endian integer representation of $k^s$.
-
 \subsection{Bitcoin scripts}
 
 \subsubsection{\texttt{SWAPLOCK}}
-is a \texttt{P2SH} used to lock funds and defines the two base execution paths: (1) swap execution and (2) refund execution.
+is a \texttt{P2SH} used to lock funds and defines the two base execution paths: (1) swap execution [success] and (2) refund execution [fail]. We define the \texttt{SWAPLOCK} script as:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 OP_IF
@@ -295,8 +305,8 @@ signed by both participants and moves the funds into \texttt{REFUND P2SH}. $\tex
 OP_0 <|$sig_a$|> <|$sig_b$|> OP_FALSE <|\texttt{SWAPLOCK} script|>
 \end{minted}
 
-\subsubsection{\texttt{REFUND},}
-\texttt{P2SH} used in case the swap already started on-chain but is cancelled. This refund script is used to lock the only output of the transaction which spends the \texttt{SWAPLOCK} output with the 2-out-of-2 timelocked multisig.
+\subsubsection{\texttt{REFUND}}
+is a \texttt{P2SH} used in case the swap already started on-chain but is cancelled. This refund script is used to lock the only output of the transaction which spends the \texttt{SWAPLOCK} output with the 2-out-of-2 timelocked multisig. We define the \texttt{REFUND} script as:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 OP_IF
@@ -327,7 +337,7 @@ Alice takes control of bitcoin after both timelocks without revealing her Monero
 Bitcoin transaction with $\geq 1$ inputs from Bob and the first output (vout: 0) to \texttt{SWAPLOCK P2SH} and optional change outputs.
 
 \subsubsection{$\text{BTX}_\textit{refund}$,}
-Bitcoin transaction with 1 input consuming \texttt{SWAPLOCK P2SH} ($\text{BTX}_\textit{lock}$, vout: 0) with the 2-out-of-2 timelocked multisig and exactly one output to \texttt{REFUND P2SH}.
+Bitcoin transaction with 1 input consuming \texttt{SWAPLOCK P2SH} ($\text{BTX}_\textit{lock}$, vout: 0) with the 2-out-of-2 timelocked multisig and exactly one output to \texttt{REFUND P2SH} script.
 
 \subsubsection{$\text{XTX}_\textit{lock}$,}
 Monero transaction that sends funds to the address $(K^v,K^s)$.
