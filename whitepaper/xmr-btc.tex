@@ -62,13 +62,13 @@
 \authorrunning{h4sh3d et al.}
 \tocauthor{h4sh3d}
 \subtitle{{\normalsize\today{\small\ -- DRAFT}}}
-\institute{TrueLevel\\ \email{h4sh3d@truelevel.io}}
+\institute{TrueLevel\\ \email{h4sh3d@protonmail.com}}
 
 \maketitle
 
 \begin{abstract}
     Cross-chain atomic swaps have been discussed for a very long time and are very useful tools. In blockchains where hashed timelock contracts are doable atomic swaps are already deployed, but when one blockchain doesn't have this capability it becomes a challenge. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, nor the other swap participant.
-    We propose a swap between two participants, one holding bitcoin and the other monero, in which when both follow the protocol their funds are not at risk at any moment. The protocol does not require timelocks on Monero side nor script capabilities.
+    We propose a swap between two participants, one holding bitcoin and the other monero, in which when both follow the protocol their funds are not at risk at any moment. The protocol does not require timelocks on Monero side nor script capabilities but does require two zero-knowledge proofs of relation between a hash and a point on Edward25519 curve.
     \keywords{Bitcoin, Monero, atomic swaps}
 \end{abstract}
 
