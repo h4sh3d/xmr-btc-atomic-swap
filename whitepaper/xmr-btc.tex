@@ -67,8 +67,8 @@
 \maketitle
 
 \begin{abstract}
-    Cross-chain atomic swaps have been discussed for a long time and are very useful tools. In blockchains where hashed timelock contracts are possible, atomic swaps are already deployed, but when one blockchain doesn't have this capability it becomes a challenge. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, nor the other swap participant.
-    We propose a swap between two participants, one holding bitcoin and the other monero, in which when both follow the protocol their funds are not at risk at any moment. The protocol does not require timelocks on the Monero side nor script capabilities but does require two zero-knowledge proofs of relation between a hash and a point on the Edward25519 curve.
+    Cross-chain atomic swaps have been discussed for a very long time and are very useful tools. In blockchains where hashed timelock contracts are possible atomic swaps are already deployed, but when one blockchain doesn't have this capability it becomes a challenge. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, nor the other swap participant.
+    We propose a swap between two participants, one holding bitcoin and the other monero, in which when both follow the protocol their funds are not at risk at any moment. The protocol does not require timelocks on the Monero side nor script capabilities but does require two proofs of knowledge of equal discrete logarithm across the Edward25519 and the secp256k1 groups.
     \keywords{Bitcoin, Monero, atomic swaps}
 \end{abstract}
 
@@ -80,7 +80,7 @@ This protocol is heavily based on a Monero StackExchange post discussing if it's
 Participants send funds into a specific address generated during the process (the lock) on each chain (cross-chain) where each party can take control of the funds on the other chain (swap) atomically (i.e. claiming of funds on either chain is mutually exclusive from the ability to claim funds from the other chain.)
 
 \subsection{Known limitations}
-To provide liveness (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up loosing funds (by not being able to claim on the other chain). This can happen in the case where they do not follow the protocol, e.g. remaining online during pending swap or claiming funds in time. The rationale behind this design is explained in \ref{worstCaseRationale}.
+To provide liveness (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up loosing funds (by not being able to claim on the other chain). This can happen in the case where they do not follow the protocol, e.g. not remaining online during swap process or not claiming funds in time. The rationale behind this design is explained in \ref{worstCaseRationale}.
 
 Fees are different from one chain to the other partly because of internal blockchain parameters \& transaction complexity, and also due to external factors such as demand for blockspace. Note that within this protocol the Bitcoin blockchain is used as a decision engine, where we use advanced features of bitcoin, which causes bigger transactions on the bitcoin side. These two factors combined make the Bitcoin transactions more expensive in general than those on the Monero chain.
 
@@ -117,11 +117,8 @@ Monero does not require any particular primitives on-chain (hashlocks, timelocks
 \subsubsection{Secret shares,}
 to enable a basic two-path execution in Monero. The Monero swap private spend key is split into two secret shares $k^s_a, k^s_b$. Participants will not use any multi-signing protocol, instead, the private spend key shares are distributed during initialization of the swap process where one participant will gain knowledge of the full key $k^s \equiv k^s_a + k^s_b \pmod l$ at the end of the protocol execution, either for a completed swap or for an aborted swap.
 
-\subsubsection{Pre-image non-interactive zero-knowledge proof of knowledge}
-proves to the other participant that a valid pre-image $\alpha$ to a given hash $h = \mathcal{H}(\alpha)$ is known and within a specific range, e.g. $\alpha \in [1, l-1]$ where $l$ is related to \texttt{edward25519} curve and $\mathcal{H}$ is the \texttt{SHA256} algorithm. The scalar $\alpha$ must be serialized in a standard way.
-
-\subsubsection{\texttt{Edward25519} private key non-interactive zero-knowledge proof of knowledge}
-proves to the other participant that a valid private key $x$ on \texttt{edward25519} is known for a given public key $X$, e.g. signatures are non-interactive zero-knowledge proof of knowledge given some public keys.
+\subsubsection{Equal discrete logarithm across groups zero-knowledge proof of knowledge}
+proves that a valid discrete logarithm $\alpha$, given two groups with fixed generators $G$ and $G'$, where $\alpha \leq min(|G|,|G'|)$, exists such that given $xG$ and $yG'$: $x=y=\alpha$. Groups are \texttt{edward25519} with $|G| = l$ and \texttt{secp256k1} with $|G'| = n$.
 
 \subsection{Bitcoin}
 \label{bitcoinPrerequisites}
@@ -135,6 +132,9 @@ to reveal secrets to the other participant. Hashlocks are primitives that requir
 
 \subsubsection{2-out-of-2 multisig,}
 to create a common path accessible only by the two participants if both agree. In this protocol we use the on-chain option but off-chain multi-signature scheme can replace it.
+
+\subsubsection{Signed message,}
+to create a valid signature $(r, s)$ with the private spend key share on \texttt{secp256k1} on a given message. Signature's $r$ is used to fix the random parameter $k$ in \texttt{ECDSA} and allow private key disclosure when signing the bitcoin transaction.
 
 \subsection{Curves parameters}
 \label{curveParams}
@@ -156,44 +156,42 @@ We denote curve parameters for
 \subsubsection{\texttt{secp256k1}} as
 \begin{equation}
 \begin{split}
-    p&: \text{a prime number;}\ p = 2^{256} - 2^{32} - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1 \\
+    p&: \text{a prime number;}\ p = 2^{256} - 2^{32} - 977 \\
     a&: \text{an element of } \mathbb{F}_p;\ a = 0 \\
     b&: \text{an element of } \mathbb{F}_p;\ b = 7 \\
     E'&: \text{an elliptic curve equation};\ y^2 = x^3 + bx + a \\
     G'&: \text{a base point};\ G' = \\ (&\texttt{\scriptsize0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798},\\ &\texttt{\scriptsize0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8}) \\
+    n&: \text{the base point order};\ n = 2^{256} - \text{\scriptsize{432420386565659656852420866394968145599}} \\
 \end{split}
 \end{equation}
 
 \section{Protocol}
-%In this chapter we describe the protocol for Alice and Bob to swap their funds atomically and without trusting each other.
 
 The overall protocol is as follows: Alice moves the monero into an address where each participant controls half of the private spend key (later referred to as key ``shares''). The Bitcoin scripting language is then used to reveal one of the shares depending on which participant claims the bitcoin. Depending on who reveals their half of the private spend key, the locked monero changes ownership. Bitcoin transactions are designed in such a way that if a participant follows the protocol they can't terminate with a loss.
 
 If the deal goes through, Alice spends the bitcoin by revealing her private key share, thus allowing Bob to spend the locked monero. If the deal is canceled, Bob spends the bitcoin after the first timelock by revealing his private key share thus allowing Alice to spend the monero, in both cases minus transaction fees.
 
-The full protocol is shown in Figure \ref{fig:protocol}.
+Key exchange is performed, as demonstated in \cite{cryptoeprint:2016:1184}, by exploiting weaknesses of \textt{ECDSA} when the nonce $k$ is reused. The full protocol is shown in Figure \ref{fig:protocol}.
 
 \subsection{Zero-Knowledge proofs}
 Zero-knowledge proofs are required at the beginning to make the protocol trustless. The protocol uses hashes as commitments of private keys, but we cannot check the hash of the other participant before it goes on-chain. Thus we need to provide a proof that the hash used in the Bitcoin script is the serialized private share and not other random data.
-%Two zero-knowledge proofs are required at the beginning of the protocol for trustlessness. They are quite symmetric but Bob needs to prove an extra piece of information to Alice. We denote Alice's ZKP basic ZKP and Bob's one extended ZKP.
 
 \subsubsection{ZKP}
 Alice and Bob must prove to each other with $i \in \{a, b\}$
 \begin{equation}
 \begin{split}
-    k^s_i &\leftarrow \text{valid scalar on \texttt{edward25519} curve} \\
+    k^s_i &\leftarrow \text{valid scalar on \texttt{edward25519} and \texttt{secp256k1}} \\
     K^s_i &= k^s_iG \\
-    h_i &= \mathcal{H}(k^s_i) \text{ for $\mathcal{H}$ as \texttt{SHA256}} \\
+    B^s_i &= k^s_iG' \\
 \end{split}
 \end{equation}
 
-that given $K^s_i$ and $h_i$
+that given $K^s_i$ and $B^s_i$
 \begin{equation}
 \begin{split}
-    \exists k^s_i \mid K^s_i = k^s_iG \land h_i = \mathcal{H}(k^s_i) \land k^s_i \in [1, l-1]
+    \exists k^s_i \mid K^s_i = k^s_iG \land B^s_i = k^s_iG' \land k^s_i < min(l,n)
 \end{split}
 \end{equation}
-where $\mathcal{H}(k^s_i)$ is the hash of the 256-bit little-endian integer representation of $k^s_i$.
 
 \begin{figure}[H]
     \begin{table}[H]
@@ -205,15 +203,16 @@ where $\mathcal{H}(k^s_i)$ is the hash of the 256-bit little-endian integer repr
           & \textit{Initialization phase} & \\
           $k^v_a, k^s_a \xleftarrow{R} [1, l-1]$ & & $k^v_b, k^s_b \xleftarrow{R} [1, l-1]$ \\
           $K^s_a \leftarrow k^s_aG$ & & $K^s_b \leftarrow k^s_bG$ \\
-          $b_a \xleftarrow{R} [1, p-1]$ & & $b_b \xleftarrow{R} [1, p-1]$ \\
+          $B^s_a \leftarrow k^s_aG'$ & & $B^s_b \leftarrow k^s_bG'$ \\
+          $b_a \xleftarrow{R} [1, n-1]$ & & $b_b \xleftarrow{R} [1, n-1]$ \\
           $B_a \leftarrow b_aG'$ & & $B_b \leftarrow b_bG'$ \\
-          $h_a \leftarrow \mathcal{H}(k^s_a)$ & & $h_b \leftarrow \mathcal{H}(k^s_b)$ \\
+          $s_a \leftarrow \texttt{sig}(m, k^s_a)$ & & $s_b \leftarrow \texttt{sig}(m', k^s_b)$ \\
           & & $s \xleftarrow{R} \mathbb{Z}_{2^{256}}$ \\
           & & $h_s \leftarrow \mathcal{H}(s)$ \\
-          $z_a \leftarrow \texttt{zkp}(k^s_a)$ & & $z_b \leftarrow \texttt{zkp}(k^s_b)$ \\
+          $z_a \leftarrow \texttt{common\_dl}(k^s_a, K^s_a, B^s_a)$ & & $z_b \leftarrow \texttt{common\_dl}(k^s_b, K^s_b, B^s_b)$ \\
            & & \\
-          \multicolumn{3}{|c|}{$\xlongleftrightarrow{\langle k^v_a, k^v_b, K^s_a, K^s_b, B_a, B_b, h_a, h_b, h_s, z_a, z_b \rangle}$} \\
-          verify $[k^v_b, K^s_b, B_b, z_b]$ & & verify $[k^v_a, K^s_a, B_a, z_a]$ \\
+          \multicolumn{3}{|c|}{$\xlongleftrightarrow{\langle k^v_a, k^v_b, K^s_a, K^s_b, B_a, B_b, B^s_a, B^s_b, h_s, s_a, s_b, z_a, z_b \rangle}$} \\
+          verify $[k^v_b, K^s_b, B^s_b, B_b, s_b, z_b]$ & & verify $[k^v_a, K^s_a, B^s_a, B_a, s_a, z_a]$ \\
           & $k^v \equiv k^v_a + k^v_b \pmod l$ & \\
           & $K^v = k^vG$ & \\
           & $K^s = K^s_a + K^s_b$ & \\
@@ -282,9 +281,10 @@ is a \texttt{P2SH} used to lock funds and defines the two base execution paths: 
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 OP_IF
-    OP_SHA256 <|$h_a$|> OP_EQUALVERIFY
-    OP_SHA256 <|$h_s$|> OP_EQUALVERIFY
-    <|$B_a$|> OP_CHECKSIG
+    OP_DUP <|$B^s_a$|> OP_CHECKSIGVERIFY
+    OP_SIZE <0x47> OP_EQUALVERIFY
+    <sigmask> OP_AND <rprev> OP_EQUALVERIFY
+    OP_SHA256 <|$h_s$|> OP_EQUAL
 OP_ESLE
     <|$t_0$|> OP_CHECKSEQUENCEVERIFY OP_DROP
     2 <|$B_a$|> <|$B_b$|> 2 OP_CHECKMULTISIG
@@ -295,7 +295,7 @@ OP_ENDIF
 Alice takes control of bitcoin and reveals her Monero key share, thus allowing Bob to take control of the monero. Alice can redeem the \texttt{SWAPLOCK} with:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
-<|$sig_a$|> <|$s$|> <|$k^s_a$|> OP_TRUE <|\texttt{SWAPLOCK} script|>
+<|$s$|> <|$sig^s_a$|> OP_TRUE <|\texttt{SWAPLOCK} script|>
 \end{minted}
 
 \subsubsection{Refund \texttt{SWAPLOCK},}
@@ -310,8 +310,9 @@ is a \texttt{P2SH} used in case the swap already started on-chain but is cancele
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 OP_IF
-    OP_SHA256 <|$h_b$|> OP_EQUALVERIFY
-    <|$B_b$|> OP_CHECKSIG
+    OP_DUP <|$B^s_b$|> OP_CHECKSIGVERIFY
+    OP_SIZE <0x47> OP_EQUALVERIFY
+    <sigmask> OP_AND <rprev> OP_EQUAL
 OP_ESLE
     <|$t_1$|> OP_CHECKSEQUENCEVERIFY OP_DROP
     <|$B_a$|> OP_CHECKSIG
@@ -322,7 +323,7 @@ OP_ENDIF
 Bob cancels the swap and reveals his Monero private share in order to redeem the \texttt{REFUND P2SH}, thus allowing Alice to regain control over her Monero. Bob can redeem it with:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
-<|$sig_b$|> <|$k^s_b$|> OP_TRUE <|\texttt{REFUND} script|>
+<|$sig^s_b$|> OP_TRUE <|\texttt{REFUND} script|>
 \end{minted}
 
 \subsubsection{Claim \texttt{REFUND},}
