@@ -5,6 +5,14 @@
 % See http://www.springer.com/computer/lncs/lncs+authors?SGWID=0-40209-0-0-0
 % for the full guidelines.
 \documentclass{llncs}
+
+ \addtolength{\oddsidemargin}{-.875in}
+ \addtolength{\evensidemargin}{-.875in}
+ \addtolength{\textwidth}{1.75in}
+
+ \addtolength{\topmargin}{-.875in}
+ \addtolength{\textheight}{1.75in}
+
 \usepackage{graphicx}
 \graphicspath{ {./assets/} }
 
@@ -14,7 +22,7 @@
 \usepackage{dirtytalk}
 \usepackage{minted}
 %\usepackage{amsmath}
-%\usepackage{mathtools}
+\usepackage{mathtools}
 \usepackage{amsfonts}
 \usepackage{extarrows}
 \usepackage{pdflscape}
@@ -54,6 +62,32 @@
 \usepackage{float}
 \usepackage[caption = false]{subfig}
 
+\newcommand{\BTX}{\texttt{BTX}}
+\newcommand{\XTX}{\texttt{XTX}}
+
+\newcommand{\Enc}{\textsf{Enc}}
+\newcommand{\EncGen}{\textsf{EncGen}}
+\newcommand{\EncSign}{\textsf{EncSign}}
+\newcommand{\EncVer}{\textsf{EncVrfy}}
+
+\newcommand{\DecSig}{\textsf{DecSig}}
+\newcommand{\KeyGen}{\textsf{Gen}}
+\newcommand{\Sign}{\textsf{Sign}}
+\newcommand{\Verify}{\textsf{Vrfy}}
+\newcommand{\Rec}{\textsf{Rec}}
+\newcommand{\RecKey}{\textsf{RecKey}}
+\newcommand{\hatsigma}{\hat{\sigma}}
+
+\newcommand{\DLProve}{\textsf{DLProve}}
+\newcommand{\DLVrfy}{\textsf{DLVrfy}}
+
+\newcommand{\InitTx}{\textsf{InitTx}}
+\newcommand{\SignTx}{\textsf{SignTx}}
+\newcommand{\VrfyTx}{\textsf{VrfyTx}}
+\newcommand{\PubTx}{\textsf{PubTx}}
+\newcommand{\WatchTx}{\textsf{WatchTx}}
+\newcommand{\RecSig}{\textsf{RecSig}}
+
 \begin{document}
 
 \title{Bitcoin--Monero Cross-chain Atomic Swap}
@@ -62,29 +96,29 @@
 \authorrunning{h4sh3d et al.}
 \tocauthor{h4sh3d}
 \subtitle{{\normalsize\today{\small\ -- DRAFT}}}
-\institute{TrueLevel\\ \email{h4sh3d@protonmail.com}}
+\institute{\email{h4sh3d@protonmail.com}}
 
 \maketitle
 
 \begin{abstract}
-    Cross-chain atomic swaps have been discussed for a very long time and are very useful tools. In blockchains where hashed timelock contracts are possible atomic swaps are already deployed, but when one blockchain doesn't have this capability it becomes a challenge. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, nor the other swap participant.
-    We propose a swap between two participants, one holding bitcoin and the other monero, in which when both follow the protocol their funds are not at risk at any moment. The protocol does not require timelocks on the Monero side nor script capabilities but does require two proofs of knowledge of equal discrete logarithm across the Edward25519 and the secp256k1 groups.
-    \keywords{Bitcoin, Monero, atomic swaps}
+    In blockchains where hashed timelock contracts are possible atomic swaps are already deployed, but when one blockchain doesn't have this capability it becomes a challenge. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, nor the other swap participant.
+    We propose a swap between two participants, one holding bitcoin and the other monero, in which when both follow the protocol their funds are not at risk at any moment. The protocol does not require timelocks on Monero side nor script capabilities but does require two proofs of knowledge of equal discrete logarithm across  the \texttt{edward25519} and the \texttt{secp256k1} groups and \texttt{ECDSA} one-time VES.
+    \keywords{Bitcoin, Monero, atomic swaps, ECDSA one-time VES, discrete logarithm equality across groups}
 \end{abstract}
 
 \section{Introduction}
-We describe a protocol for an on-chain atomic swap between Monero and Bitcoin, but the protocol can be generalized for Monero and any other cryptocurrency that fulfills the same requirements as Bitcoin, see \ref{bitcoinPrerequisites}.
+We describe a protocol for an on-chain atomic swap between Monero and Bitcoin, but the protocol can be generalized for any cryptocurrency that fulfills the same requirements as Monero to any other cryptocurrency that fulfills the same requirements as Bitcoin, see chapter \ref{prerequisites}.
 
-This protocol is heavily based on a Monero StackExchange post discussing if it's possible to trade Monero and Bitcoin in a trustless manner \cite{MoneroStackexchangeSwap}. The concept is roughly the same, with changes in the Bitcoin construction, less prerequisites in Monero, and more detailed explanations.
+This protocol is inspired on a Monero StackExchange post discussing if it's possible to trade Monero and Bitcoin in a trustless manner \cite{MoneroStackexchangeSwap}. The concept is roughly the same, with changes in Bitcoin construction, less prerequisites in Monero, and more detailed explainations.
 
 Participants send funds into a specific address generated during the process (the lock) on each chain (cross-chain) where each party can take control of the funds on the other chain (swap) atomically (i.e. claiming of funds on either chain is mutually exclusive from the ability to claim funds from the other chain.)
 
 \subsection{Known limitations}
 To provide liveness (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up loosing funds (by not being able to claim on the other chain). This can happen in the case where they do not follow the protocol, e.g. not remaining online during swap process or not claiming funds in time. The rationale behind this design is explained in \ref{worstCaseRationale}.
 
-Fees are different from one chain to the other partly because of internal blockchain parameters \& transaction complexity, and also due to external factors such as demand for blockspace. Note that within this protocol the Bitcoin blockchain is used as a decision engine, where we use advanced features of bitcoin, which causes bigger transactions on the bitcoin side. These two factors combined make the Bitcoin transactions more expensive in general than those on the Monero chain.
+Fees are different from one chain to the other partly because of internal blockchain parameters \& transaction complexity, and also due to external factors such as demand for blockspace. Note that within this protocol the Bitcoin blockchain is used as a decision engine, where we use advanced features of bitcoin---although we try to put as much logic as we can off-chain---, which causes bigger transactions on the bitcoin side. These two factors combined make the Bitcoin transactions more expensive in general than those on the Monero chain.
 
-Instant user feedback in a cross-chain atomic swap is hard to achieve.  The slowest chain and the number of confirmations required for transaction finality dictate the speed of the protocol, allowing front running in some setups. The protocol can be extended to prevent front running within certain setups however. It is worth noting that front running cannot be enforced by one participant on the other, thus making the worst case scenario the loss of transaction fees on each of participants' respective blockchain.
+Instant user feedback in a cross-chain atomic swap is hard to achieve.  The slowest chain and the number of confirmations required for transaction finality dictate the speed of the protocol, allowing front running in some cases. The protocol can be extended to prevent front running within certain setups however. It is worth noting that front running cannot be enforced by one participant on the other, thus making the worst case scenario the loss of transaction fees on each of participants' respective blockchain.
 
 \section{Scenario}
 We describe the participants and their incentives. Alice, who owns monero (XMR), and Bob, who owns bitcoin (BTC), want to swap funds. We assume that they already have negotiated the price in advance (i.e. amount of bitcoin for amount of monero to swap.) This negotiation can also be integrated into the protocol, for example by swap services who provide a price to their customers.
@@ -92,7 +126,7 @@ We describe the participants and their incentives. Alice, who owns monero (XMR),
 Both participants wish to only have two possible execution paths (which are mutually exclusive to each other) when executing the protocol: (1) the protocol succeeds and Alice gets bitcoin, Bob gets monero, or (2) the protocol fails and both keep their original funds minus the minimum transaction fees possible.
 
 \subsection{Successful swap}
-If both participants follow the protocol there will be four transactions broadcast in total, two on the Bitcoin blockchain and two on the Monero blockchain. The first ones on each chain lock the funds and makes them ready for the trade on each chain. The second ones unlock the funds for one participant only and gives knowledge to the other participant who takes control of the output on the other chain.
+If both participants follow the protocol there will be four transactions broadcast in total---only three if the Monero are not moved directly after completion, which is not a problem---, two on the Bitcoin blockchain and two on the Monero blockchain. The first ones on each chain lock the funds and makes them ready for the trade on each chain. The second ones unlock the funds for one participant only and gives knowledge to the other participant who takes control of the output on the other chain.
 
 This is the optimal execution of the protocol, requiring no timelocks, the minimum number of transactions and only locking funds for the minimum confirmation on each chain depending on the level of security expected by each participant, i.e. how many confirmations each expects for the funding transaction to be considered final and continue to the next step of the process.
 
@@ -109,16 +143,17 @@ If the swap is canceled with the refund process and Bob does not spend his refun
 This choice is made to avoid the following case: if monero are locked, Alice will be able to refund them only if Bob refunds his bitcoin first. We need an incentive mechanism to force Bob to spend his refund to prevent a deadlock in the refund process or compensate Alice if Bob does not follow the protocol correctly.
 
 \section{Prerequisites}
+\label{prerequisites}
 As previously described, conditional execution must be possible in order to achieve a swap with atomicity. Bitcoin has a simple stack-based script language that allows for conditional execution and timelocks. On the other hand, at the moment, Monero with its privacy oriented RingCT design provides only signatures to unlock UTXOs. Meaning that control of UTXOs is only related to who controls the associated private keys. The challenge is then to move control of funds only with knowledge of some private keys.
 
 \subsection{Monero}
 Monero does not require any particular primitives on-chain (hashlocks, timelocks), all building blocks are off-chain primitives. Thus we need to provide proofs of the correct initialization of the protocol, which might be the hardest part.
 
 \subsubsection{Secret shares,}
-to enable a basic two-path execution in Monero. The Monero swap private spend key is split into two secret shares $k^s_a, k^s_b$. Participants will not use any multi-signing protocol, instead, the private spend key shares are distributed during initialization of the swap process where one participant will gain knowledge of the full key $k^s \equiv k^s_a + k^s_b \pmod l$ at the end of the protocol execution, either for a completed swap or for an aborted swap.
+to enable a basic two-path execution in Monero. The Monero private spend key is split into two secret shares $k^s_a, k^s_b$. Participants will not use any multi-signing protocol, instead, the private spend key shares are distributed during initialization of the swap process where one participant will gain knowledge of the full key $k^s \equiv k^s_a + k^s_b \pmod l$ at the end of the protocol execution, either for a completed swap or for an aborted swap.
 
 \subsubsection{Equal discrete logarithm across groups zero-knowledge proof of knowledge}
-proves that a valid discrete logarithm $\alpha$, given two groups with fixed generators $G$ and $G'$, where $\alpha \leq min(|G|,|G'|)$, exists such that given $xG$ and $yG'$: $x=y=\alpha$. Groups are \texttt{edward25519} with $|G| = l$ and \texttt{secp256k1} with $|G'| = n$.
+proves that a valid discrete logarithm $\alpha$, given two groups with fixed generators $G$ and $H$, where $\alpha \leq min(|G|,|H|)$, exists such that given $xG$ and $yH$: $x=y=\alpha$. Groups are \texttt{edward25519} with $|G| = l$ and \texttt{secp256k1} with $|H| = n$.
 
 \subsection{Bitcoin}
 \label{bitcoinPrerequisites}
@@ -127,18 +162,21 @@ The bitcoin transactions in this protocol require the fix for transaction mallea
 \subsubsection{Timelock,}
 to enable new execution paths after some predefined amount of time, e.g. start the refund process after having locked funds on-chain without creating a race condition. It is worth noting that we do not require timelocks for Monero.
 
-\subsubsection{Hashlock,}
-to reveal secrets to the other participant. Hashlocks are primitives that require one to reveal some data (a pre-image) associated with a given hash to be allowed to spend the associated UTXO.
+%\subsubsection{Hashlock,}
+%to reveal secrets to the other participant. Hashlocks are primitives that require one to reveal some data (a pre-image) associated with a given hash to be allowed to spend the associated UTXO.
 
-\subsubsection{2-out-of-2 multisig,}
+\subsubsection{2-of-2 multisig,}
 to create a common path accessible only by the two participants if both agree. In this protocol we use the on-chain option but off-chain multi-signature scheme can replace it.
 
-\subsubsection{Signed message,}
-to create a valid signature $(r, s)$ with the private spend key share on \texttt{secp256k1} on a given message. Signature's $r$ is used to fix the random parameter $k$ in \texttt{ECDSA} and allow private key disclosure when signing the bitcoin transaction.
+\subsubsection{Semi-Scriptless protocol,}
+to reveal a secret and allow the protocol to continue execution without requiring complex scripting capabilities. It is worth noting that full scriptless script protocol should be able to achieve the same results.
+
+%\subsubsection{Signed message,}
+%to create a valid signature $(r, s)$ with the private spend key share on \texttt{secp256k1} on a given message. Signature's $r$ is used to fix the random parameter $k$ in \texttt{ECDSA} and allow private key disclosure when signing the bitcoin transaction.
 
 \subsection{Curves parameters}
 \label{curveParams}
-Bitcoin and Monero do not use the same elliptic curves. Bitcoin uses the \texttt{secp256k1} curve from \textit{Standards for Efficient Cryptography (SEC)} with the \texttt{ECDSA} algorithm while Monero, based on the second version of CryptoNote \cite{van2013cryptonote}, uses \texttt{Curve25519}, hereinafter also \texttt{edward25519}, from Daniel J. Bernstein \cite{CerRes10}.
+Bitcoin and Monero do not use the same elliptic curves. Bitcoin uses the \texttt{secp256k1} curve as defined in \textit{Standards for Efficient Cryptography (SEC)} with the \texttt{ECDSA} algorithm while Monero, based on the second version of CryptoNote \cite{van2013cryptonote}, uses \texttt{Curve25519}, hereinafter also \texttt{edward25519}, from Daniel J. Bernstein \cite{CerRes10}.
 
 We denote curve parameters for
 
@@ -147,7 +185,7 @@ We denote curve parameters for
 \begin{split}
     q&: \text{a prime number;}\ q = 2^{255} - 19 \\
     d&: \text{an element of } \mathbb{F}_q;\ d = - 121665/121666 \\
-    E&: \text{an elliptic curve equation};\ -x^2 + y^2 = 1 + dx^2y^2 \\
+    \mathcal{E}&: \text{an elliptic curve equation};\ -x^2 + y^2 = 1 + dx^2y^2 \\
     G&: \text{a base point};\ G = (x, -4/5) \\
     l&: \text{the base point order};\ l = 2^{252} + \text{\scriptsize27742317777372353535851937790883648493} \\
 \end{split}
@@ -159,19 +197,20 @@ We denote curve parameters for
     p&: \text{a prime number;}\ p = 2^{256} - 2^{32} - 977 \\
     a&: \text{an element of } \mathbb{F}_p;\ a = 0 \\
     b&: \text{an element of } \mathbb{F}_p;\ b = 7 \\
-    E'&: \text{an elliptic curve equation};\ y^2 = x^3 + bx + a \\
-    G'&: \text{a base point};\ G' = \\ (&\texttt{\scriptsize0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798},\\ &\texttt{\scriptsize0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8}) \\
+    \mathcal{E}'&: \text{an elliptic curve equation};\ y^2 = x^3 + bx + a \\
+    H&: \text{a base point};\ H = \\ (&\texttt{\scriptsize0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798},\\ &\texttt{\scriptsize0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8}) \\
     n&: \text{the base point order};\ n = 2^{256} - \text{\scriptsize{432420386565659656852420866394968145599}} \\
 \end{split}
 \end{equation}
 
 \section{Protocol}
-
-The overall protocol is as follows: Alice moves the monero into an address where each participant controls half of the private spend key (later referred to as key ``shares''). The Bitcoin scripting language is then used to reveal one of the shares depending on which participant claims the bitcoin. Depending on who reveals their half of the private spend key, the locked monero changes ownership. Bitcoin transactions are designed in such a way that if a participant follows the protocol they can't terminate with a loss.
+The overall protocol is as follows: Alice moves the monero into an address where each participant controls half of the private spend key (later referred to as key ``shares''). The Bitcoin scripting language is then used with semi-scriptless protocols to reveal one of the halfs of the private spend key depending on which participant claims the bitcoin. Depending on who reveals their half of the private spend key, the locked monero changes ownership. Bitcoin transactions are designed in such a way
+that if a participant follows the protocol they can't terminate with a loss.
 
 If the deal goes through, Alice spends the bitcoin by revealing her private key share, thus allowing Bob to spend the locked monero. If the deal is canceled, Bob spends the bitcoin after the first timelock by revealing his private key share thus allowing Alice to spend the monero, in both cases minus transaction fees.
 
-Key exchange is performed, as demonstated in \cite{cryptoeprint:2016:1184}, by exploiting weaknesses of \textt{ECDSA} when the nonce $k$ is reused. The full protocol is shown in Figure \ref{fig:protocol}.
+Key exchange is performed with \texttt{ECDSA} one-time VES---also adaptor signature---, as demonstated in \cite{oneTimeVES}, and equal discrete logarithm across groups zero-knowledge proof of knowledge\cite{MRL0010}. One-time VES are constructed such that given the ciphertext and the decrypted signature, the decryption key is easily recoverable. By setting the echanged key---one half of the Monero private spend key---as the decryption key we have a way to atomically sell the
+exchanged key to the other participant. Thus, because Bitcoin and Monero use different curves, we need to prove the relation between a point on \texttt{edward25519} and \texttt{secp256k1} to ensure a trustless protocol.
 
 \subsection{Zero-Knowledge proofs}
 Zero-knowledge proofs are required at the beginning to make the protocol trustless. The protocol uses hashes as commitments of private keys, but we cannot check the hash of the other participant before it goes on-chain. Thus we need to provide a proof that the hash used in the Bitcoin script is the serialized private share and not other random data.
@@ -182,69 +221,19 @@ Alice and Bob must prove to each other with $i \in \{a, b\}$
 \begin{split}
     k^s_i &\leftarrow \text{valid scalar on \texttt{edward25519} and \texttt{secp256k1}} \\
     K^s_i &= k^s_iG \\
-    B^s_i &= k^s_iG' \\
+    B^s_i &= k^s_iH \\
 \end{split}
 \end{equation}
 
 that given $K^s_i$ and $B^s_i$
 \begin{equation}
 \begin{split}
-    \exists k^s_i \mid K^s_i = k^s_iG \land B^s_i = k^s_iG' \land k^s_i < min(l,n)
+    \exists k^s_i \mid K^s_i = k^s_iG \land B^s_i = k^s_iH \land k^s_i < min(l,n)
 \end{split}
 \end{equation}
 
-\begin{figure}[H]
-    \begin{table}[H]
-        \centering
-      {\renewcommand{\arraystretch}{1.1}%
-      \begin{tabular}{ | l c l | }
-        \hline
-          \multicolumn{1}{|c}{Alice (XMR$\rightarrow$BTC)} &  & \multicolumn{1}{c|}{Bob (BTC$\rightarrow$XMR)} \\
-          & \textit{Initialization phase} & \\
-          $k^v_a, k^s_a \xleftarrow{R} [1, l-1]$ & & $k^v_b, k^s_b \xleftarrow{R} [1, l-1]$ \\
-          $K^s_a \leftarrow k^s_aG$ & & $K^s_b \leftarrow k^s_bG$ \\
-          $B^s_a \leftarrow k^s_aG'$ & & $B^s_b \leftarrow k^s_bG'$ \\
-          $b_a \xleftarrow{R} [1, n-1]$ & & $b_b \xleftarrow{R} [1, n-1]$ \\
-          $B_a \leftarrow b_aG'$ & & $B_b \leftarrow b_bG'$ \\
-          $s_a \leftarrow \texttt{sig}(m, k^s_a)$ & & $s_b \leftarrow \texttt{sig}(m', k^s_b)$ \\
-          & & $s \xleftarrow{R} \mathbb{Z}_{2^{256}}$ \\
-          & & $h_s \leftarrow \mathcal{H}(s)$ \\
-          $z_a \leftarrow \texttt{common\_dl}(k^s_a, K^s_a, B^s_a)$ & & $z_b \leftarrow \texttt{common\_dl}(k^s_b, K^s_b, B^s_b)$ \\
-           & & \\
-          \multicolumn{3}{|c|}{$\xlongleftrightarrow{\langle k^v_a, k^v_b, K^s_a, K^s_b, B_a, B_b, B^s_a, B^s_b, h_s, s_a, s_b, z_a, z_b \rangle}$} \\
-          verify $[k^v_b, K^s_b, B^s_b, B_b, s_b, z_b]$ & & verify $[k^v_a, K^s_a, B^s_a, B_a, s_a, z_a]$ \\
-          & $k^v \equiv k^v_a + k^v_b \pmod l$ & \\
-          & $K^v = k^vG$ & \\
-          & $K^s = K^s_a + K^s_b$ & \\
-          & \textit{Lock phase} & create $[\text{BTX}_\textit{lock}$, $\text{BTX}_\textit{refund}]$ \\
-          & & sign $\text{BTX}_\textit{refund}$ \\
-          \multicolumn{3}{|c|}{$\xleftarrow{\langle \text{BTX}_\textit{lock}, \text{BTX}_\textit{refund} \rangle}$} \\
-          verify $[\text{BTX}_\textit{lock}$, $\text{BTX}_\textit{refund}]$ & & \\
-          sign $\text{BTX}_\textit{refund}$ & & \\
-          \multicolumn{3}{|c|}{$\xrightarrow{\langle \text{BTX}_\textit{refund}^\textit{signed} \rangle}$} \\
-          & & verify $\text{BTX}_\textit{refund}^\textit{signed}$ \\
-          & & sign $\text{BTX}_\textit{lock}$ \\
-          & & broadcast $\text{BTX}_\textit{lock}^\textit{signed}$ \\
-          \multicolumn{3}{|c|}{$\xleftarrow{(\text{watch BTX}_\textit{lock})}$} \\
-          create $\text{XTX}_\textit{lock}$ w/ $(K^v, K^s)$ & & \\
-          sign $\text{XTX}_\textit{lock}$ & & \\
-          broadcast $\text{XTX}_\textit{lock}^\textit{signed}$ & & \\
-          \multicolumn{3}{|c|}{$\xrightarrow{(\text{watch w/ } (k^v, K^s))}$} \\
-          & \textit{Swap phase} & verify $(K^v, K^s)$ w/ $(k^v, K^s)$ \\
-          \multicolumn{3}{|c|}{$\xleftarrow{\langle s \rangle}$} \\
-          spend $\text{BTX}_\textit{lock}$ w/ $\langle k^s_a, b_a, s \rangle$ & & \\
-          \multicolumn{3}{|c|}{$\xrightarrow{\text{watch BTX}_\textit{lock}}$} \\
-          & & $k^s \equiv k^s_a + k^s_b \pmod l$ \\
-          & & spend $\text{XTX}_\textit{lock}$ w/ $\langle k^v, k^s \rangle$ \\
-        \hline
-      \end{tabular}}
-    \end{table}
-  \caption{Full protocol of cross-chain atomic swap for Bitcoin--Monero between two participants Alice and Bob with initialization, lock, and swap phases.}
-  \label{fig:protocol}
-\end{figure}
-
 \subsection{Time parameters}
-Two timelocks $t_0, t_1$ are defined during the initialization phase. $t_0$ sets the time window during which it is safe to execute the trade, after $t_0$ the refund process may start, making the trade unsafe to complete because of a potential race condition (even if hard to exploit in reality). $t_1$ sets the response time during which Bob is required to react and reveal his private Monero share to get his bitcoin back and allow Alice to redeem her monero (if moneroj have been locked).
+Two timelocks $t_0, t_1$ are defined during the initialization phase. $t_0$ sets the time window during which it is safe to execute the trade, after $t_0$ the refund process may start, making the trade unsafe to complete because of a potential race condition (even if hard to exploit in reality). $t_1$ sets the response time during which Bob is required to react and reveal his private Monero share to get his bitcoin back and allow Alice to redeem her monero (if moneroj have been locked). After $t_1$ Alice is able to claim the bitcoin unilaterally.
 
 \subsection{Monero private keys}
 Monero private keys are pairs of \texttt{edward25519} scalars. The first scalar is called private view key and the second is called private spend key. We use small letters to denote private keys and capital letters for public keys such that
@@ -277,42 +266,37 @@ The same holds for $k^v$ with $k^v_a$ and $k^v_b$.
 \subsection{Bitcoin scripts}
 
 \subsubsection{\texttt{SWAPLOCK}}
-is a \texttt{P2SH} used to lock funds and defines the two base execution paths: (1) swap execution [success] and (2) refund execution [fail]. We define the \texttt{SWAPLOCK} script as:
+is a script used to lock funds and defines the two base execution paths: (1) swap execution---success---and (2) refund execution---fail---. We define the \texttt{SWAPLOCK} script as:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 OP_IF
-    OP_DUP <|$B^s_a$|> OP_CHECKSIGVERIFY
-    OP_SIZE <0x47> OP_EQUALVERIFY
-    <sigmask> OP_AND <rprev> OP_EQUALVERIFY
-    OP_SHA256 <|$h_s$|> OP_EQUAL
+    2 <|$B_a$|> <|$B_b$|> 2 OP_CHECKMULTISIG
 OP_ESLE
     <|$t_0$|> OP_CHECKSEQUENCEVERIFY OP_DROP
-    2 <|$B_a$|> <|$B_b$|> 2 OP_CHECKMULTISIG
+    2 <|$B^r_a$|> <|$B^r_b$|> 2 OP_CHECKMULTISIG
 OP_ENDIF
 \end{minted}
 
 \subsubsection{Buy \texttt{SWAPLOCK},}
-Alice takes control of bitcoin and reveals her Monero key share, thus allowing Bob to take control of the monero. Alice can redeem the \texttt{SWAPLOCK} with:
+Alice takes control of bitcoin and reveals her Monero key share to Bob with $\sigma_1$, a one-time VES leaking $k^s_a$, thus allowing Bob to take control of the monero. $\BTX_\textit{claim}$ redeem the \texttt{SWAPLOCK} with:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
-<|$s$|> <|$sig^s_a$|> OP_TRUE <|\texttt{SWAPLOCK} script|>
+OP_0 <|$\sigma_1$|> <|$\sigma_2$|> OP_TRUE <|\texttt{SWAPLOCK} script|>
 \end{minted}
 
 \subsubsection{Refund \texttt{SWAPLOCK},}
-signed by both participants and moves the funds into \texttt{REFUND P2SH}. $\text{BTX}_\textit{refund}$ uses the following redeem script:
+signed by both participants and moves the funds into the \texttt{REFUND} script. $\BTX_\textit{refund}$ redeem the \texttt{SWAPLOCK} with:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
-OP_0 <|$sig_a$|> <|$sig_b$|> OP_FALSE <|\texttt{SWAPLOCK} script|>
+OP_0 <|$\sigma_r'$|> <|$\sigma_r''$|> OP_FALSE <|\texttt{SWAPLOCK} script|>
 \end{minted}
 
 \subsubsection{\texttt{REFUND}}
-is a \texttt{P2SH} used in case the swap already started on-chain but is canceled. This refund script is used to lock the only output of the transaction which spends the \texttt{SWAPLOCK} output with the 2-of-2 timelocked multisig. We define the \texttt{REFUND} script as:
+is a script used in case the swap already started on-chain but is cancelled. This refund script is used to move the funds out of the \texttt{SWAPLOCK} script with the 2-of-2 timelocked multisig. We define the \texttt{REFUND} script as:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 OP_IF
-    OP_DUP <|$B^s_b$|> OP_CHECKSIGVERIFY
-    OP_SIZE <0x47> OP_EQUALVERIFY
-    <sigmask> OP_AND <rprev> OP_EQUAL
+    2 <|$B^r_a$|> <|$B^r_b$|> 2 OP_CHECKMULTISIG
 OP_ESLE
     <|$t_1$|> OP_CHECKSEQUENCEVERIFY OP_DROP
     <|$B_a$|> OP_CHECKSIG
@@ -320,30 +304,139 @@ OP_ENDIF
 \end{minted}
 
 \subsubsection{Spend \texttt{REFUND},}
-Bob cancels the swap and reveals his Monero private share in order to redeem the \texttt{REFUND P2SH}, thus allowing Alice to regain control over her Monero. Bob can redeem it with:
+Bob cancels the swap and reveals his Monero private share with $\sigma_1'$, a one-time VES leaking $k^s_b$, thus allowing Alice to regain control over her Monero. $\BTX_\textit{spend}$ redeem the \texttt{REFUND} with:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
-<|$sig^s_b$|> OP_TRUE <|\texttt{REFUND} script|>
+OP_0 <|$\sigma_1'$|> <|$\sigma_2'$|> OP_TRUE <|\texttt{REFUND} script|>
 \end{minted}
 
 \subsubsection{Claim \texttt{REFUND},}
-Alice takes control of bitcoin after both timelocks without revealing her Monero key share, ending up with Bob loosing money for not following the protocol. Alice can redeem the \texttt{REFUND P2SH} with:
+Alice takes control of bitcoin after both timelocks without revealing her Monero key share, ending up with Bob loosing money for not following the protocol. $\BTX_\textit{claim}$ redeem the \texttt{REFUND} with:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 <|$sig_a$|> OP_FALSE <|\texttt{REFUND} script|>
 \end{minted}
 
 \subsection{Transactions}
-\subsubsection{$\text{BTX}_\textit{lock}$,}
-Bitcoin transaction with $\geq 1$ inputs from Bob and the first output (vout: 0) to \texttt{SWAPLOCK P2SH} and optional change outputs.
+We describe and name the Bitcoin and Monero transactions that are needed for the entire protocol.
 
-\subsubsection{$\text{BTX}_\textit{refund}$,}
-Bitcoin transaction with 1 input consuming \texttt{SWAPLOCK P2SH} ($\text{BTX}_\textit{lock}$, vout: 0) with the 2-of-2 timelocked multisig and exactly one output to the \texttt{REFUND P2SH} script.
+\subsubsection{$\BTX_\textit{lock}$,}
+Bitcoin transaction with $\geq 1$ inputs from Bob and the first output (vout: 0) to \texttt{SWAPLOCK} script and optional change outputs.
 
-\subsubsection{$\text{XTX}_\textit{lock}$,}
+\subsubsection{$\BTX_\textit{buy}$,}
+Bitcoin transaction with 1 input consuming the \texttt{SWAPLOCK} script ($\BTX_\textit{lock}$, vout: 0) with the 2-of-2 semi-scriptless multisig and $\geq 1$ outputs.
+
+\subsubsection{$\BTX_\textit{refund}$,}
+Bitcoin transaction with 1 input consuming the \texttt{SWAPLOCK} script ($\BTX_\textit{lock}$, vout: 0) with the 2-of-2 timelocked multisig and exactly one output to \texttt{REFUND} script.
+
+\subsubsection{$\BTX_\textit{spend}$,}
+Bitcoin transaction with 1 input consuming the \texttt{REFUND} script ($\BTX_\textit{refund}$, vout: 0) with the 2-of-2 semi-scriptless multisig and $\geq 1$ outputs.
+
+\subsubsection{$\BTX_\textit{claim}$,}
+Bitcoin transaction with 1 input consuming the \texttt{REFUND} script ($\BTX_\textit{refund}$, vout: 0) with Alice signature and $\geq 1$ outputs.
+
+\subsubsection{$\XTX_\textit{lock}$,}
 Monero transaction that sends funds to the address $(K^v,K^s)$.
 
-\section{Acknowledgment} Daniel Lebrecht and Tom Shababi are acknowledged for their helpful contribution and comments during the completion of this work.
+\subsubsection{$\XTX_\textit{buy}$,}
+Monero transaction that spend funds from the address $(K^v,K^s)$.
+
+\newpage
+
+\begin{figure}[H]
+    \begin{table}[H]
+        \centering
+      {\renewcommand{\arraystretch}{1.1}%
+      \begin{tabular}{ | l c l | }
+        \hline
+          \multicolumn{1}{|c}{Alice (XMR$\rightarrow$BTC)} &  & \multicolumn{1}{c|}{Bob (BTC$\rightarrow$XMR)} \\
+          %& \textit{Initialization phase} & \\
+          $k^v_a, k^s_a \xleftarrow{R} [1, l-1]$ & & $k^v_b, k^s_b \xleftarrow{R} [1, l-1]$ \\
+          $K^s_a \leftarrow k^s_aG$ & & $K^s_b \leftarrow k^s_bG$ \\
+          $B^s_a \leftarrow k^s_aH$ & & $B^s_b \leftarrow k^s_bH$ \\
+          $b_a,b^r_a \xleftarrow{R} [1, n-1]$ & & $b_b,b^r_b \xleftarrow{R} [1, n-1]$ \\
+          $B_a \leftarrow b_aH$ & & $B_b \leftarrow b_bH$ \\
+          $B^r_a \leftarrow b^r_aH$ & & $B^r_b \leftarrow b^r_bH$ \\
+          $z_a \leftarrow \DLProve(k^s_a, K^s_a, B^s_a)$ & & $z_b \leftarrow \DLProve(k^s_b, K^s_b, B^s_b)$ \\
+           & & \\
+
+          \multicolumn{3}{|c|}{$\xlongleftrightarrow{\langle k^v_i, K^s_i, B_i, B^s_i, B^r_i, z_i \rangle \  \forall i \in \{a, b\}}$} \\
+
+          & $k^v \equiv k^v_a + k^v_b \pmod l$ & \\
+          & $K^v = k^vG$, \ $K^s = K^s_a + K^s_b$ & \\
+
+          \DLVrfy$(K^s_b, B^s_b, z_b) \stackrel{?}{=} 1$ & & \DLVrfy$(K^s_a, B^s_a, z_a) \stackrel{?}{=} 1$ \\
+          & & $(\BTX_\textit{lock}$, $\BTX_\textit{refund}) \gets$ \InitTx$(B_a, B_b, B^r_a, B^r_b)$ \\
+          & & $\sigma_r' \gets$ \Sign$(b^r_b, \BTX_\textit{refund})$ \\
+          & & $\hatsigma_1' \gets \EncSign(b^r_b, B^s_b, \BTX_\textit{spend})$ \\
+
+          \multicolumn{3}{|c|}{$\xleftarrow{\langle \BTX_\textit{lock}, \BTX_\textit{refund}, \BTX_\textit{spend}, \sigma_r', \hatsigma_1' \rangle}$} \\
+
+          \VrfyTx$(\BTX_\textit{lock}$, $\BTX_\textit{refund}, B_a, B_b, B^r_a, B^r_b) \stackrel{?}{=} 1$ & & \\
+          \Verify$(B^r_b, \BTX_\textit{refund}, \sigma_r') \stackrel{?}{=} 1$ & & \\
+          $\EncVer(B^r_b, B^s_b, \BTX_\textit{spend}, \hatsigma_1') \stackrel{?}{=} 1$ & & \\
+          $\sigma_2' \gets \Sign(b^r_a, \BTX_\textit{spend})$ & & \\
+          $\delta' \gets \RecKey(B^s_b, \hatsigma_1')$ & & \\
+          $\sigma_r'' \gets$ \Sign$(b^r_a, \BTX_\textit{refund})$ & & \\
+          %$\sigma_r \coloneqq (\sigma, \sigma')$ & & \\
+
+          \multicolumn{3}{|c|}{$\xrightarrow{\langle \sigma_r'', \sigma_2' \rangle}$} \\
+          %\multicolumn{3}{|c|}{$\sigma_r \coloneqq (\sigma_r', \sigma_r'')$} \\
+
+          & & \Verify$(B^r_a, \BTX_\textit{refund}, \sigma_r'') \stackrel{?}{=} 1$ \\
+          & & \Verify$(B^r_a, \BTX_\textit{spend}, \sigma_2') \stackrel{?}{=} 1$ \\
+          & & \PubTx$(\BTX_\textit{lock})$ \\
+
+          \WatchTx$(\BTX_\textit{lock}) \stackrel{?}{=} 1$ & & \\
+          \multicolumn{3}{|c|}{$\dots$} \\
+
+          %\multicolumn{3}{|c|}{$\xleftarrow{(\text{watch BTX}_\textit{lock})}$} \\
+          $\XTX_\textit{lock} \gets$ \InitTx$(K^v, K^s)$ & & \\
+          %\SignTx$(\XTX_\textit{lock})$ & & \\
+          \PubTx$(\XTX_\textit{lock})$ & & \\
+
+          $\BTX_\textit{buy} \gets$ \InitTx$(\BTX_\textit{lock})$ & & \\
+          $\hatsigma_1 \gets \EncSign(b_a, B^s_a, \BTX_\textit{buy})$ & & \\
+
+          \multicolumn{3}{|c|}{$\xrightarrow{\langle \BTX_\textit{buy}, \hatsigma_1 \rangle}$} \\
+
+          %\multicolumn{3}{|c|}{$\xrightarrow{(\text{watch w/ } (k^v, K^s))}$} \\
+          %& \textit{Swap phase} & \\
+          & & \WatchTx$(K^v, K^s)$ w/ $(k^v, K^s) \stackrel{?}{=} 1$ \\
+          \multicolumn{3}{|c|}{$\dots$} \\
+
+          %\multicolumn{3}{|c|}{$m \coloneqq \BTX_\textit{buy}$} \\
+
+          %$m \coloneqq \BTX_\textit{buy}$ & & \\
+          & & $\EncVer(B_a, B^s_a, \BTX_\textit{buy}, \hatsigma_1) \stackrel{?}{=} 1$ \\
+          & & $\sigma_2 \gets \Sign(b_b, \BTX_\textit{buy})$ \\
+          %& & $\hatsigma := (\hatsigma_1, \sigma_2)$ \\
+          & & $\delta \gets \RecKey(B^s_a, \hatsigma_1)$ \\
+
+          \multicolumn{3}{|c|}{$\xleftarrow{\langle \sigma_2 \rangle}$} \\
+
+          $\Verify(B_b, \BTX_\textit{buy}, \sigma_2) \stackrel{?}{=} 1$ & & \\
+          $\sigma_1 \gets \DecSig(k^s_a, \hatsigma_1)$ & & \\
+          $\sigma := (\sigma_1, \sigma_2)$ & & \\
+          \PubTx$(\BTX_\textit{buy}, \sigma)$ & & \\
+          %spend $\BTX_\textit{lock}$ w/ $\langle k^s_a, b_a, s \rangle$ & & \\
+
+          & & \WatchTx$(\BTX_\textit{buy}) \stackrel{?}{=} 1$ \\
+          \multicolumn{3}{|c|}{$\dots$} \\
+          %\multicolumn{3}{|c|}{$\xrightarrow{\text{watch BTX}_\textit{lock}}$} \\
+
+          & & $(\sigma_1, \sigma_2) \gets \RecSig(\BTX_\textit{buy})$ \\
+          & & $k^s_a \gets \Rec(\sigma_1, \delta)$ \\
+          & & $k^s \equiv k^s_a + k^s_b \pmod l$ \\
+          & & $\langle k^v, k^s \rangle$ \\
+        \hline
+      \end{tabular}}
+    \end{table}
+  %\caption{Protocol definition of a successful cross-chain atomic swap between Alice and Bob, without refund procedure.}
+  \label{fig:protocol}
+\end{figure}
+
+\section{Acknowledgement} TrueLevel SA collaborators and Sarang Noether from the Monero Research Lab are acknowledged for their helpful contribution and comments during the completion of this work.
 
 %
 % ---- Bibliography ----
