@@ -109,12 +109,10 @@
 \section{Introduction}
 We describe a protocol for an on-chain atomic swap between Monero and Bitcoin, but the protocol can be generalized for any cryptocurrency that fulfills the same requirements as Monero to any other cryptocurrency that fulfills the same requirements as Bitcoin, see chapter \ref{prerequisites}.
 
-This protocol is inspired on a Monero StackExchange post discussing if it's possible to trade Monero and Bitcoin in a trustless manner \cite{MoneroStackexchangeSwap}. The concept is roughly the same, with changes in Bitcoin construction, less prerequisites in Monero, and more detailed explainations.
-
 Participants send funds into a specific address generated during the process (the lock) on each chain (cross-chain) where each party can take control of the funds on the other chain (swap) atomically (i.e. claiming of funds on either chain is mutually exclusive from the ability to claim funds from the other chain.)
 
 \subsection{Known limitations}
-To provide liveness (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up loosing funds (by not being able to claim on the other chain). This can happen in the case where they do not follow the protocol, e.g. not remaining online during swap process or not claiming funds in time. The rationale behind this design is explained in \ref{worstCaseRationale}.
+To provide liveness (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up loosing funds (by not being able to claim on the other chain). This can happen in the case where they do not follow the protocol, e.g. remaining online during pending swap or claiming funds in time. The rationale behind this design is explained in \ref{worstCaseRationale}.
 
 Fees are different from one chain to the other partly because of internal blockchain parameters \& transaction complexity, and also due to external factors such as demand for blockspace. Note that within this protocol the Bitcoin blockchain is used as a decision engine, where we use advanced features of bitcoin---although we try to put as much logic as we can off-chain---, which causes bigger transactions on the bitcoin side. These two factors combined make the Bitcoin transactions more expensive in general than those on the Monero chain.
 
@@ -162,17 +160,11 @@ The bitcoin transactions in this protocol require the fix for transaction mallea
 \subsubsection{Timelock,}
 to enable new execution paths after some predefined amount of time, e.g. start the refund process after having locked funds on-chain without creating a race condition. It is worth noting that we do not require timelocks for Monero.
 
-%\subsubsection{Hashlock,}
-%to reveal secrets to the other participant. Hashlocks are primitives that require one to reveal some data (a pre-image) associated with a given hash to be allowed to spend the associated UTXO.
-
 \subsubsection{2-of-2 multisig,}
 to create a common path accessible only by the two participants if both agree. In this protocol we use the on-chain option but off-chain multi-signature scheme can replace it.
 
 \subsubsection{Semi-Scriptless protocol,}
 to reveal a secret and allow the protocol to continue execution without requiring complex scripting capabilities. It is worth noting that full scriptless script protocol should be able to achieve the same results.
-
-%\subsubsection{Signed message,}
-%to create a valid signature $(r, s)$ with the private spend key share on \texttt{secp256k1} on a given message. Signature's $r$ is used to fix the random parameter $k$ in \texttt{ECDSA} and allow private key disclosure when signing the bitcoin transaction.
 
 \subsection{Curves parameters}
 \label{curveParams}
@@ -350,7 +342,6 @@ Monero transaction that spend funds from the address $(K^v,K^s)$.
       \begin{tabular}{ | l c l | }
         \hline
           \multicolumn{1}{|c}{Alice (XMR$\rightarrow$BTC)} &  & \multicolumn{1}{c|}{Bob (BTC$\rightarrow$XMR)} \\
-          %& \textit{Initialization phase} & \\
           $k^v_a, k^s_a \xleftarrow{R} [1, l-1]$ & & $k^v_b, k^s_b \xleftarrow{R} [1, l-1]$ \\
           $K^s_a \leftarrow k^s_aG$ & & $K^s_b \leftarrow k^s_bG$ \\
           $B^s_a \leftarrow k^s_aH$ & & $B^s_b \leftarrow k^s_bH$ \\
@@ -378,10 +369,8 @@ Monero transaction that spend funds from the address $(K^v,K^s)$.
           $\sigma_2' \gets \Sign(b^r_a, \BTX_\textit{spend})$ & & \\
           $\delta' \gets \RecKey(B^s_b, \hatsigma_1')$ & & \\
           $\sigma_r'' \gets$ \Sign$(b^r_a, \BTX_\textit{refund})$ & & \\
-          %$\sigma_r \coloneqq (\sigma, \sigma')$ & & \\
 
           \multicolumn{3}{|c|}{$\xrightarrow{\langle \sigma_r'', \sigma_2' \rangle}$} \\
-          %\multicolumn{3}{|c|}{$\sigma_r \coloneqq (\sigma_r', \sigma_r'')$} \\
 
           & & \Verify$(B^r_a, \BTX_\textit{refund}, \sigma_r'') \stackrel{?}{=} 1$ \\
           & & \Verify$(B^r_a, \BTX_\textit{spend}, \sigma_2') \stackrel{?}{=} 1$ \\
@@ -390,9 +379,7 @@ Monero transaction that spend funds from the address $(K^v,K^s)$.
           \WatchTx$(\BTX_\textit{lock}) \stackrel{?}{=} 1$ & & \\
           \multicolumn{3}{|c|}{$\dots$} \\
 
-          %\multicolumn{3}{|c|}{$\xleftarrow{(\text{watch BTX}_\textit{lock})}$} \\
           $\XTX_\textit{lock} \gets$ \InitTx$(K^v, K^s)$ & & \\
-          %\SignTx$(\XTX_\textit{lock})$ & & \\
           \PubTx$(\XTX_\textit{lock})$ & & \\
 
           $\BTX_\textit{buy} \gets$ \InitTx$(\BTX_\textit{lock})$ & & \\
@@ -400,17 +387,11 @@ Monero transaction that spend funds from the address $(K^v,K^s)$.
 
           \multicolumn{3}{|c|}{$\xrightarrow{\langle \BTX_\textit{buy}, \hatsigma_1 \rangle}$} \\
 
-          %\multicolumn{3}{|c|}{$\xrightarrow{(\text{watch w/ } (k^v, K^s))}$} \\
-          %& \textit{Swap phase} & \\
           & & \WatchTx$(K^v, K^s)$ w/ $(k^v, K^s) \stackrel{?}{=} 1$ \\
           \multicolumn{3}{|c|}{$\dots$} \\
 
-          %\multicolumn{3}{|c|}{$m \coloneqq \BTX_\textit{buy}$} \\
-
-          %$m \coloneqq \BTX_\textit{buy}$ & & \\
           & & $\EncVer(B_a, B^s_a, \BTX_\textit{buy}, \hatsigma_1) \stackrel{?}{=} 1$ \\
           & & $\sigma_2 \gets \Sign(b_b, \BTX_\textit{buy})$ \\
-          %& & $\hatsigma := (\hatsigma_1, \sigma_2)$ \\
           & & $\delta \gets \RecKey(B^s_a, \hatsigma_1)$ \\
 
           \multicolumn{3}{|c|}{$\xleftarrow{\langle \sigma_2 \rangle}$} \\
@@ -419,11 +400,9 @@ Monero transaction that spend funds from the address $(K^v,K^s)$.
           $\sigma_1 \gets \DecSig(k^s_a, \hatsigma_1)$ & & \\
           $\sigma := (\sigma_1, \sigma_2)$ & & \\
           \PubTx$(\BTX_\textit{buy}, \sigma)$ & & \\
-          %spend $\BTX_\textit{lock}$ w/ $\langle k^s_a, b_a, s \rangle$ & & \\
 
           & & \WatchTx$(\BTX_\textit{buy}) \stackrel{?}{=} 1$ \\
           \multicolumn{3}{|c|}{$\dots$} \\
-          %\multicolumn{3}{|c|}{$\xrightarrow{\text{watch BTX}_\textit{lock}}$} \\
 
           & & $(\sigma_1, \sigma_2) \gets \RecSig(\BTX_\textit{buy})$ \\
           & & $k^s_a \gets \Rec(\sigma_1, \delta)$ \\
@@ -432,7 +411,6 @@ Monero transaction that spend funds from the address $(K^v,K^s)$.
         \hline
       \end{tabular}}
     \end{table}
-  %\caption{Protocol definition of a successful cross-chain atomic swap between Alice and Bob, without refund procedure.}
   \label{fig:protocol}
 \end{figure}
 
