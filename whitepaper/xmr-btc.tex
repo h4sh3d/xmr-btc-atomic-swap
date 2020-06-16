@@ -145,13 +145,10 @@ This choice is made to avoid the following case: if monero are locked, Alice wil
 As previously described, conditional execution must be possible in order to achieve a swap with atomicity. Bitcoin has a simple stack-based script language that allows for conditional execution and timelocks. On the other hand, at the moment, Monero with its privacy oriented RingCT design provides only signatures to unlock UTXOs. Meaning that control of UTXOs is only related to who controls the associated private keys. The challenge is then to move control of funds only with knowledge of some private keys.
 
 \subsection{Monero}
-Monero does not require any particular primitives on-chain (hashlocks, timelocks), all building blocks are off-chain primitives. Thus we need to provide proofs of the correct initialization of the protocol, which might be the hardest part.
+Monero does not require any particular primitives on-chain (hashlocks, timelocks), all building blocks are off-chain primitives. Thus we need to provide proofs of the correct initialization of the protocol, which might be the hardest part, proofs are described in chapter \ref{eqDiscreteLog}.
 
 \subsubsection{Secret shares,}
 to enable a basic two-path execution in Monero. The Monero private spend key is split into two secret shares $k^s_a, k^s_b$. Participants will not use any multi-signing protocol, instead, the private spend key shares are distributed during initialization of the swap process where one participant will gain knowledge of the full key $k^s \equiv k^s_a + k^s_b \pmod l$ at the end of the protocol execution, either for a completed swap or for an aborted swap.
-
-\subsubsection{Equal discrete logarithm across groups zero-knowledge proof of knowledge}
-proves that a valid discrete logarithm $\alpha$, given two groups with fixed generators $G$ and $H$, where $\alpha \leq min(|G|,|H|)$, exists such that given $xG$ and $yH$: $x=y=\alpha$. Groups are \texttt{edward25519} with $|G| = l$ and \texttt{secp256k1} with $|H| = n$.
 
 \subsection{Bitcoin}
 \label{bitcoinPrerequisites}
@@ -166,9 +163,12 @@ to create a common path accessible only by the two participants if both agree. I
 \subsubsection{Semi-Scriptless protocol,}
 to reveal a secret and allow the protocol to continue execution without requiring complex scripting capabilities. It is worth noting that full scriptless script protocol should be able to achieve the same results.
 
-\subsection{Curves parameters}
+\subsection{Equal discrete logarithm across groups zero-knowledge proof of knowledge}
+Equal discrete logarithm across groups zero-knowledge proof of knowledge proves that a valid discrete logarithm $\alpha$, given two groups with fixed generators $G$ and $H$, where $\alpha \leq min(|G|,|H|)$, exists such that given $xG$ and $yH$: $x=y=\alpha$. Groups are \texttt{edward25519} with $|G| = l$ and \texttt{secp256k1} with $|H| = n$.
+
+\subsubsection{Curves parameters}
 \label{curveParams}
-Bitcoin and Monero do not use the same elliptic curves. Bitcoin uses the \texttt{secp256k1} curve as defined in \textit{Standards for Efficient Cryptography (SEC)} with the \texttt{ECDSA} algorithm while Monero, based on the second version of CryptoNote \cite{van2013cryptonote}, uses \texttt{Curve25519}, hereinafter also \texttt{edward25519}, from Daniel J. Bernstein \cite{CerRes10}.
+Bitcoin and Monero do not use the same elliptic curves. Bitcoin uses the \texttt{secp256k1} curve as defined in \textit{Standards for Efficient Cryptography (SEC)} with the \texttt{ECDSA} algorithm while Monero, based on the second version of CryptoNote \cite{van2013cryptonote}, uses \texttt{curve25519}, hereinafter also \texttt{edward25519}, from Daniel J. Bernstein \cite{CerRes10}.
 
 We denote curve parameters for
 
@@ -201,36 +201,20 @@ that if a participant follows the protocol they can't terminate with a loss.
 
 If the deal goes through, Alice spends the bitcoin by revealing her private key share, thus allowing Bob to spend the locked monero. If the deal is canceled, Bob spends the bitcoin after the first timelock by revealing his private key share thus allowing Alice to spend the monero, in both cases minus transaction fees.
 
-Key exchange is performed with \texttt{ECDSA} one-time VES---also adaptor signature---, as demonstated in \cite{oneTimeVES}, and equal discrete logarithm across groups zero-knowledge proof of knowledge\cite{MRL0010}. One-time VES are constructed such that given the ciphertext and the decrypted signature, the decryption key is easily recoverable. By setting the echanged key---one half of the Monero private spend key---as the decryption key we have a way to atomically sell the
-exchanged key to the other participant. Thus, because Bitcoin and Monero use different curves, we need to prove the relation between a point on \texttt{edward25519} and \texttt{secp256k1} to ensure a trustless protocol.
+Key exchange is performed with \texttt{ECDSA} one-time VES---also adaptor signature---, as demonstrated in \cite{oneTimeVES}, and equal discrete logarithm across groups zero-knowledge proof of knowledge\cite{MRL0010}. One-time VES are constructed such that given the ciphertext and the decrypted signature, the decryption key is easily recoverable.
+By setting the private key share---one half of the Monero full private spend key---as the decryption key we have a way to atomically sell the private key share to the other participant. Thus, because Bitcoin and Monero use different curves, we need to prove the relation between a point on \texttt{edward25519} and \texttt{secp256k1} to ensure a trustlessness.
 
-\subsection{Zero-Knowledge proofs}
-Zero-knowledge proofs are required at the beginning to make the protocol trustless. The protocol uses hashes as commitments of private keys, but we cannot check the hash of the other participant before it goes on-chain. Thus we need to provide a proof that the hash used in the Bitcoin script is the serialized private share and not other random data.
+\subsection{Non-interactive refund}
+If Alice and or Bob locked their funds but one abort the swap, or stop communicating at some point, the protocol must not require interactivity to complete the refund procedure for both participant. Otherwise Alice can hostage Bob by not responding and wait for the second timelock to get free bitcoin. In a gracefully aborted swap Bob should reveal his Monero private key share allowing Alice to get her monero back through one one-time VES.
 
-\subsubsection{ZKP}
-Alice and Bob must prove to each other with $i \in \{a, b\}$
-\begin{equation}
-\begin{split}
-    k^s_i &\leftarrow \text{valid scalar on \texttt{edward25519} and \texttt{secp256k1}} \\
-    K^s_i &= k^s_iG \\
-    B^s_i &= k^s_iH \\
-\end{split}
-\end{equation}
+\texttt{ECDSA} one-time VES are interactive, one has to provide the encrypted signature and if the verification succeeds the counterparty provides a valid signature for the 2-of-2 Bitcoin multisig back, thus allowing the former to decrypt and publish two valid signatures for the 2-of-2 multisig and the latter to learn---on-chain---the decrypted signature and recover the decryption key.
 
-that given $K^s_i$ and $B^s_i$
-\begin{equation}
-\begin{split}
-    \exists k^s_i \mid K^s_i = k^s_iG \land B^s_i = k^s_iH \land k^s_i < min(l,n)
-\end{split}
-\end{equation}
-
-\subsection{Time parameters}
-Two timelocks $t_0, t_1$ are defined during the initialization phase. $t_0$ sets the time window during which it is safe to execute the trade, after $t_0$ the refund process may start, making the trade unsafe to complete because of a potential race condition (even if hard to exploit in reality). $t_1$ sets the response time during which Bob is required to react and reveal his private Monero share to get his bitcoin back and allow Alice to redeem her monero (if moneroj have been locked). After $t_1$ Alice is able to claim the bitcoin unilaterally.
+As mentionned before the refund process must be non-interactive, the protocol is design in such a way that Alice learns Bob's refund encrypted signature and provides to Bob a valid refund 2-of-2 multisig signature before locking the funds. Bob can, in the case of a refund, decrypt and publish the signature without Alice cooperation.
 
 \subsection{Monero private keys}
-Monero private keys are pairs of \texttt{edward25519} scalars. The first scalar is called private view key and the second is called private spend key. We use small letters to denote private keys and capital letters for public keys such that
+Monero private keys are pairs of \texttt{edward25519} scalars. One is called the private view key and one is called the private spend key. We use small letters to denote private keys and capital letters for public keys such that
 $$X = xG$$
-Where $G$ is the generator element of the curve (see \ref{curveParams}). We denote
+Where $G$ is the generator element of the curve. We denote
 \begin{enumerate}[label=(\roman*)]
     \item the private key $k^v$ as the full private view key,
     \item $K^v$ as the full public view key,
@@ -254,6 +238,30 @@ And then
 \end{equation}
 
 The same holds for $k^v$ with $k^v_a$ and $k^v_b$.
+
+\subsection{Zero-Knowledge proofs}
+\label{eqDiscreteLog}
+Zero-knowledge proofs are required at the beginning to make the protocol trustless. The protocol uses one-time VES to reveal private key shares, but we cannot check the discrete logarithm equality between the Monero public key share and Bitcoin public decryption key of the other participant before it goes on-chain. Thus we need to provide a proof that the discrete logarithm is the same across the two groups.
+
+\subsubsection{Equal discrete logarithm across groups}
+Alice and Bob must prove to each other with
+\begin{equation}
+\begin{split}
+    k^s_i &\leftarrow \text{valid scalar on \texttt{edward25519} and \texttt{secp256k1}} \\
+    K^s_i &= k^s_iG \\
+    B^s_i &= k^s_iH \\
+\end{split}
+\end{equation}
+
+for $i \in \{a, b\}$, given $K^s_i$ and $B^s_i$ that
+\begin{equation}
+\begin{split}
+    \exists k^s_i \mid K^s_i = k^s_iG \land B^s_i = k^s_iH \land k^s_i < \textsf{min}(l,n)
+\end{split}
+\end{equation}
+
+\subsection{Time parameters}
+Two timelocks $t_0, t_1$ are defined during the initialization phase. $t_0$ sets the time window during which it is safe to execute the trade, after $t_0$ the refund process may start, making the trade unsafe to complete because of a potential race condition (even if hard to exploit in reality). $t_1$ sets the response time during which Bob is required to react and reveal his private Monero share to get his bitcoin back and allow Alice to redeem her monero (if moneroj have been locked). After $t_1$ Alice is able to claim the bitcoin unilaterally.
 
 \subsection{Bitcoin scripts}
 
