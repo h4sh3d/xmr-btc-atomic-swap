@@ -357,9 +357,11 @@ Monero transaction that spend funds from the address $(K^v,K^s)$.
           $B_a \leftarrow b_aH$ & & $B_b \leftarrow b_bH$ \\
           $B^r_a \leftarrow b^r_aH$ & & $B^r_b \leftarrow b^r_bH$ \\
           $z_a \leftarrow \DLProve(k^s_a, K^s_a, B^s_a)$ & & $z_b \leftarrow \DLProve(k^s_b, K^s_b, B^s_b)$ \\
+          & & $s \gets [0, 2^{256}]$ \\
+          & & $h_s \gets \texttt{SHA256}(s)$ \\
            & & \\
 
-          \multicolumn{3}{|c|}{$\xlongleftrightarrow{\langle k^v_i, K^s_i, B_i, B^s_i, B^r_i, z_i \rangle \  \forall i \in \{a, b\}}$} \\
+          \multicolumn{3}{|c|}{$\xlongleftrightarrow{\langle k^v_i, K^s_i, B_i, B^s_i, B^r_i, z_i, h_s \rangle \  \forall i \in \{a, b\}}$} \\
 
           & $k^v \equiv k^v_a + k^v_b \pmod l$ & \\
           & $K^v = k^vG$, \ $K^s = K^s_a + K^s_b$ & \\
@@ -367,47 +369,43 @@ Monero transaction that spend funds from the address $(K^v,K^s)$.
           \DLVrfy$(K^s_b, B^s_b, z_b) \stackrel{?}{=} 1$ & & \DLVrfy$(K^s_a, B^s_a, z_a) \stackrel{?}{=} 1$ \\
           & & $(\BTX_\textit{lock}$, $\BTX_\textit{refund}) \gets$ \InitTx$(B_a, B_b, B^r_a, B^r_b)$ \\
           & & $\sigma_r' \gets$ \Sign$(b^r_b, \BTX_\textit{refund})$ \\
-          & & $\hatsigma_1' \gets \EncSign(b^r_b, B^s_b, \BTX_\textit{spend})$ \\
 
-          \multicolumn{3}{|c|}{$\xleftarrow{\langle \BTX_\textit{lock}, \BTX_\textit{refund}, \BTX_\textit{spend}, \sigma_r', \hatsigma_1' \rangle}$} \\
+          \multicolumn{3}{|c|}{$\xleftarrow{\langle \BTX_\textit{lock}, \BTX_\textit{refund}, \BTX_\textit{spend}, \sigma_r' \rangle}$} \\
 
-          \VrfyTx$(\BTX_\textit{lock}$, $\BTX_\textit{refund}, B_a, B_b, B^r_a, B^r_b) \stackrel{?}{=} 1$ & & \\
+          \VrfyTx$(\BTX_\textit{lock}$, $\BTX_\textit{refund}, B_a, B_b, B^r_a, B^r_b, h_s) \stackrel{?}{=} 1$ & & \\
           \Verify$(B^r_b, \BTX_\textit{refund}, \sigma_r') \stackrel{?}{=} 1$ & & \\
-          $\EncVer(B^r_b, B^s_b, \BTX_\textit{spend}, \hatsigma_1') \stackrel{?}{=} 1$ & & \\
-          $\sigma_2' \gets \Sign(b^r_a, \BTX_\textit{spend})$ & & \\
+          $\hatsigma_1' \gets \EncSign(b^r_a, B^s_b, \BTX_\textit{spend})$ & & \\
           $\delta' \gets \RecKey(B^s_b, \hatsigma_1')$ & & \\
           $\sigma_r'' \gets$ \Sign$(b^r_a, \BTX_\textit{refund})$ & & \\
 
-          \multicolumn{3}{|c|}{$\xrightarrow{\langle \sigma_r'', \sigma_2' \rangle}$} \\
+          \multicolumn{3}{|c|}{$\xrightarrow{\langle \sigma_r'', \hatsigma_1' \rangle}$} \\
 
+          & & $\EncVer(B^r_a, B^s_b, \BTX_\textit{spend}, \hatsigma_1') \stackrel{?}{=} 1$ \\
           & & \Verify$(B^r_a, \BTX_\textit{refund}, \sigma_r'') \stackrel{?}{=} 1$ \\
-          & & \Verify$(B^r_a, \BTX_\textit{spend}, \sigma_2') \stackrel{?}{=} 1$ \\
+          %& & \Verify$(B^r_a, \BTX_\textit{spend}, \sigma_2') \stackrel{?}{=} 1$ \\
+          & & $\BTX_\textit{buy} \gets$ \InitTx$(\BTX_\textit{lock})$ \\
+          & & $\hatsigma_1 \gets \EncSign(b_b, B^s_a, \BTX_\textit{buy})$ \\
+          & & $\delta \gets \RecKey(B^s_a, \hatsigma_1)$ \\
           & & \PubTx$(\BTX_\textit{lock})$ \\
 
+          \multicolumn{3}{|c|}{$\xleftarrow{\langle \BTX_\textit{buy}, \hatsigma_1 \rangle}$} \\
+
+          $\EncVer(B_b, B^s_a, \BTX_\textit{buy}, \hatsigma_1) \stackrel{?}{=} 1$ & & \\
           \WatchTx$(\BTX_\textit{lock}) \stackrel{?}{=} 1$ & & \\
           \multicolumn{3}{|c|}{$\dots$} \\
 
           $\XTX_\textit{lock} \gets$ \InitTx$(K^v, K^s)$ & & \\
           \PubTx$(\XTX_\textit{lock})$ & & \\
 
-          $\BTX_\textit{buy} \gets$ \InitTx$(\BTX_\textit{lock})$ & & \\
-          $\hatsigma_1 \gets \EncSign(b_a, B^s_a, \BTX_\textit{buy})$ & & \\
-
-          \multicolumn{3}{|c|}{$\xrightarrow{\langle \BTX_\textit{buy}, \hatsigma_1 \rangle}$} \\
-
-          & & \WatchTx$(K^v, K^s)$ w/ $(k^v, K^s) \stackrel{?}{=} 1$ \\
           \multicolumn{3}{|c|}{$\dots$} \\
+          & & \WatchTx$(K^v, K^s)$ w/ $(k^v, K^s) \stackrel{?}{=} 1$ \\
 
-          & & $\EncVer(B_a, B^s_a, \BTX_\textit{buy}, \hatsigma_1) \stackrel{?}{=} 1$ \\
-          & & $\sigma_2 \gets \Sign(b_b, \BTX_\textit{buy})$ \\
-          & & $\delta \gets \RecKey(B^s_a, \hatsigma_1)$ \\
+          \multicolumn{3}{|c|}{$\xleftarrow{\langle s \rangle}$} \\
 
-          \multicolumn{3}{|c|}{$\xleftarrow{\langle \sigma_2 \rangle}$} \\
-
-          $\Verify(B_b, \BTX_\textit{buy}, \sigma_2) \stackrel{?}{=} 1$ & & \\
           $\sigma_1 \gets \DecSig(k^s_a, \hatsigma_1)$ & & \\
+          $\sigma_2 \gets \Sign(b_a, \BTX_\textit{buy})$ & & \\
           $\sigma := (\sigma_1, \sigma_2)$ & & \\
-          \PubTx$(\BTX_\textit{buy}, \sigma)$ & & \\
+          \PubTx$(\BTX_\textit{buy}, \sigma, s)$ & & \\
 
           & & \WatchTx$(\BTX_\textit{buy}) \stackrel{?}{=} 1$ \\
           \multicolumn{3}{|c|}{$\dots$} \\
