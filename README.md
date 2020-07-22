@@ -19,4 +19,4 @@ make
 
 ## About
 
-This research project have been sponsored by the Monero Community and initiated by TrueLevel SA in 2018, developed by h4sh3d and presented at 36C3.
+This research project have been sponsored by the Monero Community and initiated by TrueLevel SA in 2018, developed by h4sh3d and presented at 36C3 with zkao.
