@@ -116,24 +116,24 @@
 \maketitle
 
 \begin{abstract}
-    In blockchains where hashed timelock contracts are possible atomic swaps are already deployed, but when one blockchain doesn't have this capability it becomes a challenge. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, nor the other swap participant.
+    In blockchains where hashed timelock contracts are possible atomic swaps are already deployed, but when one of the blockchains doesn't have this capability it becomes a challenge. This protocol describes how to achieve atomic swaps between Bitcoin and Monero with two transactions per chain without trusting any central authority, servers, nor the other swap participant.
     We propose a swap between two participants, one holding bitcoin and the other monero, in which when both follow the protocol their funds are not at risk at any moment. The protocol does not require timelocks on Monero side nor script capabilities but does require two proofs of knowledge of equal discrete logarithm across  the \texttt{edward25519} and the \texttt{secp256k1} groups and \texttt{ECDSA} one-time VES.
     \keywords{Bitcoin, Monero, atomic swaps, ECDSA one-time VES, discrete logarithm equality across groups}
 \end{abstract}
 
 \section{Introduction}
-We describe a protocol for an on-chain atomic swap between Monero and Bitcoin, but the protocol can be generalized for any cryptocurrency that fulfills the same requirements as Monero to any other cryptocurrency that fulfills the same requirements as Bitcoin, for a exhaustive list of prerequisites see chapter \ref{prerequisites}.
+We describe a protocol for an on-chain atomic swap between Monero and Bitcoin, but the protocol can be generalized for any cryptocurrency that fulfills the same requirements as Monero to any other cryptocurrency that fulfills the same requirements as Bitcoin. For an exhaustive list of prerequisites, see chapter \ref{prerequisites}.
 
 Participants send funds into a specific address generated during the process (the lock) on each chain (cross-chain) where each party can take control of the funds on the other chain (swap) atomically (i.e. claiming of funds on either chain is mutually exclusive from the ability to claim funds from the other chain.)
 
 During this process participants does not expose their funds at risk if they follow the protocol accordingly, meaning that the swap is trustless and does not require any sort of collateral, allowing two strangers to trade without risks nor the help of a third-party.
 
 \subsection{Known limitations}
-To provide liveness (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up loosing funds (by not being able to claim on the other chain). This can happen in the case where they do not follow the protocol, e.g. remaining online during pending swap or claiming funds in time. The rationale behind this design is explained in \ref{worstCaseRationale}.
+To provide liveness (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up losing funds (by not being able to claim on the other chain). This can happen in the case where they do not follow the protocol, e.g. remaining online during pending swap or claiming funds in time. The rationale behind this design is explained in \ref{worstCaseRationale}.
 
-Fees are different from one chain to the other partly because of internal blockchain parameters \& transaction complexity, and also due to external factors such as demand for blockspace. Note that within this protocol the Bitcoin blockchain is used as a decision engine, where we use scripting features of bitcoin---although we try to put as much logic as we can off-chain---, which causes bigger transactions on the bitcoin side. These two factors combined make the Bitcoin transactions more expensive in general than those on the Monero chain.
+Fees are different from one chain to the other partly because of internal blockchain parameters \& transaction complexity, and also due to external factors such as demand for blockspace. Note that within this protocol, the Bitcoin blockchain is used as a decision engine, where we use scripting features of bitcoin---although we try to put as much logic as we can off-chain---, which causes bigger transactions on the bitcoin side. These two factors combined make the Bitcoin transactions more expensive in general than those on the Monero chain.
 
-Instant user feedback in a cross-chain atomic swap is hard to achieve.  The slowest chain and the number of confirmations required for transaction finality dictate the speed of the protocol, allowing front running in some cases. The protocol can be extended to prevent front running within certain setups however. It is worth noting that front running cannot be enforced by one participant on the other, thus making the worst case scenario the loss of transaction fees on each of participants' respective blockchain.
+Instant user feedback in a cross-chain atomic swap is hard to achieve.  The slowest chain and the number of confirmations required for transaction finality dictate the speed of the protocol, allowing front running in some cases. The protocol can be extended to prevent front running within certain setups however. It is worth noting that front running cannot be enforced by one participant on the other, thus making the worst case scenario the loss of transaction fees on each of the participants' respective blockchains.
 
 \section{Scenario}
 We describe the participants and their incentives. Alice, who owns monero (XMR), and Bob, who owns bitcoin (BTC), want to swap funds. We assume that they already have negotiated the price in advance (i.e. amount of bitcoin for amount of monero to swap.) This negotiation can also be integrated into the protocol, for example by swap services who provide a price to their customers.
@@ -200,7 +200,7 @@ In this context we focus on groups \texttt{edward25519} with $|G| = l$ and \text
 \end{itemize}
 \end{definition}
 
-\subsubsection{Curves parameters}
+\subsubsection{Curve parameters}
 \label{curveParams}
 Bitcoin and Monero do not use the same elliptic curves. Bitcoin uses the \texttt{secp256k1} curve as defined in \textit{Standards for Efficient Cryptography (SEC)} with the \texttt{ECDSA} algorithm while Monero, based on the second version of CryptoNote \cite{van2013cryptonote}, uses \texttt{curve25519}, hereinafter also \texttt{edward25519}, from Daniel J. Bernstein \cite{CerRes10}.
 
@@ -494,17 +494,17 @@ We define some utility algorithms to initialize, sign and verify Bitcoin and Mon
   \label{fig:protocol}
 \end{figure}
 
-Dots represent syncronization timing during which one or more participants must check for transaction confirmations before continuing the protocol execution. The level of security, i.e. the number of confirmations required by each participants, is a local parameter but must be set accordingly to the timing parameters, which are global two both participants, to avoid the case when the timing is less or equal to the security parameter.
+Dots represent syncronization timing during which one or more participants must check for transaction confirmations before continuing the protocol execution. The level of security, i.e. the number of confirmations required by each participants, is a local parameter, but must be set according to the timing parameters, which are global to both participants, to avoid the case when the timing is less or equal to the security parameter.
 
 \section{Further research}
-This protocol is implemantable with today's Bitcoin and Monero state, but further research should be done to use \texttt{Schnorr} capabilities and simplicity to create a more efficient protocol with lighter on-chain fingerprint. This would help with anonymization of atomic swap in regards to chain-analysis.
+This protocol is implementable with today's state of Bitcoin and Monero, but further research is required to use \texttt{Schnorr} capabilities and simplicity to create a more efficient protocol with lighter on-chain footprint. This would improve anonymization of atomic swaps in regards to chain-analysis.
 
-As discussed, this protocol can be adapted to more cryptocurrencies. Some of them might not have atomic swap already  and extending to other pairs might help decentralization. Extending this protocol to privacy preserving cryptocurrencies pairs only like Monero or Mimblewimble is the next challenge in atomic swaps.
+As discussed, this protocol can be adapted to more cryptocurrencies. Some of them might not have atomic swap already, and extending to other pairs might help decentralization. Extending this protocol to privacy preserving cryptocurrencies pairs only like Monero or Mimblewimble is the next challenge in atomic swaps.
 
 Integration with services or decentralize exchanges would help democratize trading without trusted institutions and might increase the market liquidity. Because of the nature of the design beeing asymetric, building services might not be straightforward.
 
 \section{Acknowledgement}
-The Monero Research Lab and Sarang Noether are acknowledged for their helpful comments during the completion of this work. This work have been suported and partially funded by the Monero Community, a special thanks to all donators. Secondly thanks to TrueLevel SA collaborators for the initial funding and their helpful contribution and comments.
+The Monero Research Lab and Sarang Noether are acknowledged for their helpful comments during the completion of this work. This work has been supported and partially funded by the Monero Community, a special thanks to all donators. Secondly thanks to TrueLevel SA collaborators for the initial funding and their helpful contribution and comments.
 
 %
 % ---- Bibliography ----
