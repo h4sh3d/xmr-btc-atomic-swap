@@ -302,9 +302,9 @@ Zero-knowledge proofs are required at the beginning to make the protocol trustle
 Alice and Bob must prove to each other with
 \begin{equation}
 \begin{split}
-    k^s_i &\leftarrow \text{valid scalar on \texttt{edward25519} and \texttt{secp256k1}} \\
-    K^s_i \in \GG &= k^s_iG \\
-    B^s_i \in \HH &= k^s_iH \\
+    k^s_i &\leftarrow \text{scalars on \texttt{edward25519} and \texttt{secp256k1} with an equivalent bit representation} \\
+    K^s_i &= k^s_iG \in \GG \\
+    B^s_i &= k^s_iH \in \HH \\
 \end{split}
 \end{equation}
 
@@ -328,7 +328,7 @@ is a script used to lock funds and defines the two base execution paths: (1) swa
 OP_IF
     OP_SHA256 <|$h_s$|> OP_EQUALVERIFY
     2 <|$B_a$|> <|$B_b$|> 2 OP_CHECKMULTISIG
-OP_ESLE
+OP_ELSE
     <|$t_0$|> OP_CHECKSEQUENCEVERIFY OP_DROP
     2 <|$B^r_a$|> <|$B^r_b$|> 2 OP_CHECKMULTISIG
 OP_ENDIF
@@ -354,7 +354,7 @@ is a script used in case the swap already started on-chain but is cancelled. Thi
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 OP_IF
     2 <|$B^r_a$|> <|$B^r_b$|> 2 OP_CHECKMULTISIG
-OP_ESLE
+OP_ELSE
     <|$t_1$|> OP_CHECKSEQUENCEVERIFY OP_DROP
     <|$B_a$|> OP_CHECKSIG
 OP_ENDIF
@@ -401,7 +401,8 @@ Monero transaction that spend funds from the address $(K^v,K^s)$.
 \subsection{Full protocol sequence}
 We describe the full protocol execution to successfully complete a swap, while computing and sharing all necessary knowledge in case one stop responding at any time or one start the refund process actively.
 
-During the first communication round both share parameters used to initialize the protocol, we can avoid schemes such as commit-reveal even with $K^s = K^s_a + K^s_b$ thanks to the equal discrete logarithm zero-knowledge proofs, one cannot arbitrarily choose $K^s$ and compute a valid proof $z_i$.
+During the first communication round both share parameters used to initialize the protocol, we might avoid schemes such as commit-reveal even with $K^s = K^s_a + K^s_b$ thanks to the equal discrete logarithm zero-knowledge proofs, one cannot arbitrarily choose $K^s$ and compute a valid proof $z_i$, however to ensure getting a random view key for each execution a commit-reveal must be added on $k^v_i$, thus without adding more round of communication a commit-reveal might be added on
+$k^s_i$ also.
 
 We define some utility algorithms to initialize, sign and verify Bitcoin and Monero transactions.
 
@@ -490,7 +491,7 @@ We define some utility algorithms to initialize, sign and verify Bitcoin and Mon
         \hline
       \end{tabular}}
     \end{table}
-  \caption{Full successful protocol execution between Alice and Bob}
+  \caption{Protocol execution between Alice and Bob for a successful swap}
   \label{fig:protocol}
 \end{figure}
 
