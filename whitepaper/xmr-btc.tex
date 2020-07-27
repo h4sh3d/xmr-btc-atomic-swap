@@ -185,10 +185,10 @@ to syncronize both chains before allowing one to start the swap.
 to create a common path accessible only by the two participants if both agree. In this protocol we use the on-chain option in the context of Bitcoin, but off-chain multi-signature schemes are more efficient and should be preferred in other setups.
 
 \subsubsection{Semi-Scriptless protocol,}
-to reveal a secret and allow the protocol to continue execution without requiring complex scripting capabilities. We use ECDSA one-time VES such as describe in \ref{oneTimeEcdsaVES}. It is worth noting that full scriptless script protocol should be able to achieve the same results with better efficiency.
+to reveal a secret and allow the protocol to continue execution without requiring complex scripting capabilities. We use ECDSA one-time VES such as describe in \ref{oneTimeEcdsaVES}. It is worth noting that full scriptless script \cite{poelstra-adaptor} protocol should be able to achieve the same results with better efficiency.
 
 \subsection{Equal discrete logarithm across groups zero-knowledge proof of knowledge}
-Equal discrete logarithm across groups zero-knowledge proof of knowledge, as described in technical note \cite{MRL0010}, allow the verification of a common discrete logarithm $\alpha$ given two groups with fixed generators $G \in \GG$ and $H \in \HH$, where $\alpha \leq min(|G|,|H|)$, such that given $xG$ and $yH$: $x=y=\alpha$. 
+Equal discrete logarithm across groups zero-knowledge proof of knowledge, as described in technical note \cite{MRL0010}, allow the verification of a common discrete logarithm $\alpha$ given two groups with fixed generators $G \in \GG$ and $H \in \HH$, where $\alpha \leq min(|G|,|H|)$, such that given $xG$ and $yH$: $x=y=\alpha$.
 
 In this context we focus on groups \texttt{edward25519} with $|G| = l$ and \texttt{secp256k1} with $|H| = n$.
 
@@ -231,7 +231,7 @@ We denote curve parameters for
 
 \subsection{\texttt{ECDSA} one-time VES}
 \label{oneTimeEcdsaVES}
-\texttt{ECDSA} one-time VES are introduced by Fournier et al. in \cite{oneTimeVES} as a generalization of the concept of adaptor signatures under \texttt{Schnorr} and \texttt{ECDSA}. One-time Verifiably Encrypted Signatures, hereinafter one-time VES, are VES constructed such that with knowledge of the ciphertext and the plaintext it is possible to recover the encrypting key.
+\texttt{ECDSA} one-time VES are introduced by Fournier et al. in \cite{oneTimeVES} as a generalization of the concept of adaptor signatures under \texttt{Schnorr} \cite{Schnorr:1989:EIS:646754.705037} and \texttt{ECDSA}. One-time Verifiably Encrypted Signatures, hereinafter one-time VES, are VES constructed such that with knowledge of the ciphertext and the plaintext it is possible to recover the encrypting key.
 
 We recall some of the algorithms defined in \cite{oneTimeVES} as:
 
@@ -248,7 +248,7 @@ We recall some of the algorithms defined in \cite{oneTimeVES} as:
 
 \subsection{Generalization}
 As shown in the Monero section there is no on-chain requirements, we only make use of private key generation and addresses, meaning that this scheme can be generalized to any pair of cryptocurrencies where one fulfills the bitcoin prerequisites, making this scheme very chain agnostic (under the assumption of the above cryptographic primitives existance for the underlaying chains' parameters). However it is worth noting that other schemes are simpler and more efficient when, in the pair, both
-chains have on-chain capabilities, but such schemes are generally already deployed.
+chains have on-chain capabilities, but such schemes are generally already deployed \cite{atomic-swap, scriptless-atomic-swap}.
 
 \section{Protocol}
 The overall protocol is as follows: Alice moves the monero into an address where each participant controls half of the private spend key (later referred to as key ``shares''). The Bitcoin scripting language is then used with semi-scriptless protocols to reveal one of the halfs of the private spend key depending on which participant claims the bitcoin. Depending on who reveals their half of the private spend key, the locked monero changes ownership. Bitcoin transactions are designed in such a way
