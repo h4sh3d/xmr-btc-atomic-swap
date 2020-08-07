@@ -151,13 +151,13 @@ When locking the bitcoin, after a timelock, Alice or Bob can start the process o
 When the refund transaction is broadcast Bob must spend the refund before some timelock, otherwise he might end up loosing his bitcoin without getting any monero.  Because of this we can describe this as an interactive protocol from Bob's perspective, i.e. Bob cannot go offline -- he must react to such a situation during the swap. Alice on the other hand, can remain offline.
 
 \subsection{Worst case scenario}
-If the swap is canceled with the refund process and Bob does not spend his refund before the timelock, Alice can claim the refund without revealing the knowledge needed to Bob to claim on the other chain. Thus one participant, Bob, ends up disadvantaged and three Bitcoin transactions are needed instead of two.
+If the swap is cancelled with the refund process and Bob does not spend his refund before the timelock, Alice can claim the refund without revealing the knowledge needed to Bob to claim on the other chain. Thus one participant, Bob, ends up disadvantaged and three Bitcoin transactions are needed instead of two.
 
 \subsubsection{Rationale}
 \label{worstCaseRationale}
-This choice is made to avoid the following case: if monero are locked, Alice will be able to refund them only if Bob refunds his bitcoin first. We need an incentive mechanism to force Bob to spend his refund to prevent a deadlock in the refund process or compensate Alice if Bob does not follow the protocol correctly.
+This choice is made to avoid the following case: if the monero are locked, Alice will be able to refund them if and only if Bob refunds his bitcoin first. We need an incentive mechanism to force Bob to spend his refund to prevent a deadlock in the refund process or compensate Alice if Bob does not follow the protocol correctly.
 
-Otherwise Bob, with all the information already learned, can go offline and move his bitcoin a year after the swap, forcing Alice to constently monitor the chain until she sees Bob's transaction and learn the last piece of knowledge she need to unlock her monero.
+Otherwise Bob, with all the information already learned, can go offline and move his bitcoin a year after the swap, forcing Alice to consistently monitor the chain until she sees Bob's transaction and learn the last piece of knowledge she need to unlock her monero.
 
 \section{Prerequisites}
 \label{prerequisites}
@@ -166,10 +166,10 @@ As previously described, conditional execution must be possible in order to achi
 In this chapter we discuss all the required pieces needed on both chains and off-chain to achieve an atomic swap under the previously exposed scenario.
 
 \subsection{Monero}
-Monero does not require any particular on-chain primitives (hashlocks, timelocks), all building blocks are off-chain primitives. Thus we need to provide proofs of the correct initialization of the protocol such as described in chapter \ref{eqDiscreteLog}, those proofs will ensure the swap atomicity for each participants.
+Monero does not require any particular on-chain primitives (hashlocks, timelocks), all building blocks are off-chain primitives. Thus we need to provide proofs of the correct initialization of the protocol such as described in chapter \ref{eqDiscreteLog}: those proofs will ensure the swap atomicity for each participant.
 
 \subsubsection{Secret shares,}
-to enable a basic two-path execution in Monero. The Monero private spend key is split into two secret shares $k^s_a, k^s_b$. Participants will not use any multi-signing protocol, instead, the private spend key shares are distributed during initialization of the swap process where one participant will gain knowledge of the full key $k^s \equiv k^s_a + k^s_b \pmod l$ at the end of the protocol execution, either for a completed swap or for an aborted swap.
+to enable a basic two-path execution in Monero. The Monero private spend key is split into two secret shares $k^s_a$ and $k^s_b$. Participants will not use any multi-signature protocol; instead, the private spend key shares are distributed during initialization of the swap process where one participant will gain knowledge of the full key $k^s \equiv k^s_a + k^s_b \pmod l$ at the end of the protocol execution, either for a completed swap or for an aborted swap.
 
 \subsection{Bitcoin}
 \label{bitcoinPrerequisites}
@@ -185,7 +185,7 @@ to syncronize both chains before allowing one to start the swap.
 to create a common path accessible only by the two participants if both agree. In this protocol we use the on-chain option in the context of Bitcoin, but off-chain multi-signature schemes are more efficient and should be preferred in other setups.
 
 \subsubsection{Semi-Scriptless protocol,}
-to reveal a secret and allow the protocol to continue execution without requiring complex scripting capabilities. We use ECDSA one-time VES such as describe in \ref{oneTimeEcdsaVES}. It is worth noting that full scriptless script \cite{poelstra-adaptor} protocol should be able to achieve the same results with better efficiency.
+to reveal a secret and allow the protocol to continue execution without requiring complex scripting capabilities. We use ECDSA one-time VES such as described in \ref{oneTimeEcdsaVES}. It is worth noting that full scriptless script \cite{poelstra-adaptor} protocol should be able to achieve the same results with better efficiency.
 
 \subsection{Equal discrete logarithm across groups zero-knowledge proof of knowledge}
 Equal discrete logarithm across groups zero-knowledge proof of knowledge, as described in technical note \cite{MRL0010}, allow the verification of a common discrete logarithm $\alpha$ given two groups with fixed generators $G \in \GG$ and $H \in \HH$, where $\alpha \leq min(|G|,|H|)$, such that given $xG$ and $yH$: $x=y=\alpha$.
@@ -193,10 +193,10 @@ Equal discrete logarithm across groups zero-knowledge proof of knowledge, as des
 In this context we focus on groups \texttt{edward25519} with $|G| = l$ and \texttt{secp256k1} with $|H| = n$.
 
 \begin{definition}[Equal discrete logarithm across groups scheme]
-    An equal discrete logarithm across groups scheme is defined with two algorithms under the parameters tuple $(\GG,\HH,G,G',H,H')$:
+    An equal discrete logarithm across groups scheme is defined with two algorithms under the parameter tuple $(\GG,\HH,G,G',H,H')$:
 \begin{itemize}
     \item $\DLProve(\alpha) \rightarrow (\phi,A,B)$: A probabilistic proving algorithm which on input of a discrete logarithm $\alpha$ outputs a proof $\phi$, a point $A \in \GG$, and a point $B \in \HH$.
-    \item $\DLVrfy(\phi,A,B) \rightarrow \{0,1\}$: A deterministic proof verification algorithm which on input of a proof $\phi$, a point $A \in \GG$, and a point $B \in \HH$ outputs 1 only if $(A,B)$ share a common discrete logarithm across their respective groups.
+    \item $\DLVrfy(\phi,A,B) \rightarrow \{0,1\}$: A deterministic proof verification algorithm which on input of a proof $\phi$, a point $A \in \GG$, and a point $B \in \HH$ outputs 1 if and only if $(A,B)$ share a common discrete logarithm across their respective groups.
 \end{itemize}
 \end{definition}
 
@@ -231,30 +231,30 @@ We denote curve parameters for
 
 \subsection{\texttt{ECDSA} one-time VES}
 \label{oneTimeEcdsaVES}
-\texttt{ECDSA} one-time VES are introduced by Fournier et al. in \cite{oneTimeVES} as a generalization of the concept of adaptor signatures under \texttt{Schnorr} \cite{Schnorr:1989:EIS:646754.705037} and \texttt{ECDSA}. One-time Verifiably Encrypted Signatures, hereinafter one-time VES, are VES constructed such that with knowledge of the ciphertext and the plaintext it is possible to recover the encrypting key.
+\texttt{ECDSA} one-time VES are introduced by Fournier et al. in \cite{oneTimeVES} as a generalization of the concept of adaptor signatures under \texttt{Schnorr} \cite{Schnorr:1989:EIS:646754.705037} and \texttt{ECDSA}. One-time Verifiably Encrypted Signatures, hereinafter one-time VES, are VES constructed such that with knowledge of the ciphertext and the plaintext, it is possible to recover the encrypting key.
 
 We recall some of the algorithms defined in \cite{oneTimeVES} as:
 
 \begin{definition}[\texttt{ECDSA} one-time VES]
     An \texttt{ECDSA} one-time VES scheme contains:
 \begin{itemize}
-    \item $\EncSign(\skSign, \pkEnc, m) \hskip2.3pt{\mbox{\tiny${\$}$\normalsize}}\!\!\rightarrow \hatsigma$: A possibly probabilistic encrypted signing algorithm, which on input of a secret signing key $\skSign$, a public encryption key $\pkEnc$ and a message $m$ outputs a ciphertext $\hatsigma$.
-    \item $\EncVer(\pkSign, \pkEnc, m, \hatsigma) \rightarrow \bin$: A deterministic encrypted signature verification algorithm which on input of a public signing key $\pkSign$, a public encryption key $\pkEnc$, a message $m$ and a ciphertext $\hatsigma$ outputs 1 only if $\hatsigma$ is a valid encryption of a signature on $m$ for $\pkSign$ under $\pkEnc$.
-    \item $\DecSig(\skEnc, \hatsigma) \rightarrow \sigma$: A (usually) deterministic signature decryption algorithm which on input of a decryption key $\skEnc$ and a valid ciphertext $\hatsigma$ under that encryption key  outputs a valid signature $\sigma$.
+    \item $\EncSign(\skSign, \pkEnc, m) \hskip2.3pt{\mbox{\tiny${\$}$\normalsize}}\!\!\rightarrow \hatsigma$: A possibly probabilistic encrypted signing algorithm, which on input of a secret signing key $\skSign$, a public encryption key $\pkEnc$, and a message $m$, outputs a ciphertext $\hatsigma$.
+    \item $\EncVer(\pkSign, \pkEnc, m, \hatsigma) \rightarrow \bin$: A deterministic encrypted signature verification algorithm which --- on input of a public signing key $\pkSign$, a public encryption key $\pkEnc$, a message $m$ and a ciphertext $\hatsigma$ --- outputs 1 if and only if $\hatsigma$ is a valid encryption of a signature on $m$ for $\pkSign$ under $\pkEnc$.
+    \item $\DecSig(\skEnc, \hatsigma) \rightarrow \sigma$: A (usually) deterministic signature decryption algorithm which --- on input of a decryption key $\skEnc$ and a valid ciphertext $\hatsigma$ under that encryption key --- outputs a valid signature $\sigma$.
     \item $\RecKey(\pkEnc, \hatsigma) \rightarrow \delta$: A deterministic recovery key extraction algorithm which extracts a recovery key $\delta$ from the ciphertext $\hatsigma$ and the public encryption key $\pkEnc$.
-    \item $\Rec(\sigma,\rec) \rightarrow \skEnc$: A deterministic decryption key recovery algorithm which when given a decrypted signature $\sigma$ and the recovery key $\rec$ associated with the original ciphertext, returns the secret decryption key $\skEnc$.
+    \item $\Rec(\sigma,\rec) \rightarrow \skEnc$: A deterministic decryption key recovery algorithm which --- when given a decrypted signature $\sigma$ and the recovery key $\rec$ associated with the original ciphertext --- returns the secret decryption key $\skEnc$.
 \end{itemize}
 \end{definition}
 
 \subsection{Generalization}
-As shown in the Monero section there is no on-chain requirements, we only make use of private key generation and addresses, meaning that this scheme can be generalized to any pair of cryptocurrencies where one fulfills the bitcoin prerequisites, making this scheme very chain agnostic (under the assumption of the above cryptographic primitives existance for the underlaying chains' parameters). However it is worth noting that other schemes are simpler and more efficient when, in the pair, both
+As shown in the Monero section, there are no on-chain requirements: We only make use of private key generation and addresses, meaning that this scheme can be generalized to any pair of cryptocurrencies where one fulfills the bitcoin prerequisites, making this scheme very chain agnostic (under the assumption of the above cryptographic primitives existence for the underlaying chains' parameters). However, it is worth noting that other schemes are simpler and more efficient when, in the pair, both
 chains have on-chain capabilities, but such schemes are generally already deployed \cite{atomic-swap, scriptless-atomic-swap}.
 
 \section{Protocol}
-The overall protocol is as follows: Alice moves the monero into an address where each participant controls half of the private spend key (later referred to as key ``shares''). The Bitcoin scripting language is then used with semi-scriptless protocols to reveal one of the halfs of the private spend key depending on which participant claims the bitcoin. Depending on who reveals their half of the private spend key, the locked monero changes ownership. Bitcoin transactions are designed in such a way
-that if a participant follows the protocol they can't terminate with a loss.
+The overall protocol is as follows: Alice moves the monero into an address where each participant controls half of the private spend key (later referred to as key ``shares''). The Bitcoin scripting language is then used with semi-scriptless protocols to reveal one of the halfs of the private spend key, depending on which participant claims the bitcoin. Depending on who reveals their half of the private spend key, the locked monero change ownership. Bitcoin transactions are designed in such a way
+that if a participant follows the protocol, they can't terminate with a loss.
 
-If the deal goes through, Alice spends the bitcoin by revealing her private key share, thus allowing Bob to spend the locked monero. If the deal is canceled, Bob spends the bitcoin after the first timelock by revealing his private key share thus allowing Alice to spend the monero, in both cases minus transaction fees.
+If the deal goes through, Alice spends the bitcoin by revealing her private key share, thus allowing Bob to spend the locked monero. If the deal is cancelled, Bob spends the bitcoin after the first timelock by revealing his private key share thus allowing Alice to spend the monero, in both cases minus transaction fees.
 
 Key exchange is performed with \texttt{ECDSA} one-time VES---also adaptor signatures---, and equal discrete logarithm across groups zero-knowledge proofs of knowledge. One-time VES are constructed such that given the ciphertext and the decrypted signature, the decryption key is easily recoverable.
 By setting the private key share---one half of the Monero full private spend key---as the decryption key we have a way to atomically sell the private key share to the other participant. Thus, because Bitcoin and Monero use different curves, we need to prove the relation between a point on \texttt{edward25519} and \texttt{secp256k1} to ensure protocol trustlessness.
@@ -262,14 +262,14 @@ By setting the private key share---one half of the Monero full private spend key
 \subsection{Non-interactive refund}
 If Alice and or Bob locked their funds but one abort the swap, or stop communicating at some point, the protocol must not require interactivity to complete the refund procedure for both participant. Otherwise Alice can hostage Bob by not responding and wait for the second timelock to get free bitcoin. In a gracefully aborted swap Bob should reveal his Monero private key share allowing Alice to get her monero back through one one-time VES.
 
-\texttt{ECDSA} one-time VES are interactive, one has to provide the encrypted signature and if the verification succeeds the counterparty provides a valid signature for the 2-of-2 Bitcoin multisig back---a.k.a semi-scriptless scripts---, thus allowing the former to decrypt and publish two valid signatures for the 2-of-2 multisig and the latter to learn---on-chain---the decrypted signature and recover the decryption key.
+\texttt{ECDSA} one-time VES are interactive: one has to provide the encrypted signature, and if the verification succeeds, the counterparty provides a valid signature for the 2-of-2 Bitcoin multisig back---a.k.a semi-scriptless scripts---, thus allowing the former to decrypt and publish two valid signatures for the 2-of-2 multisig and the latter to learn---on-chain---the decrypted signature and recover the decryption key.
 
-As mentionned before the refund process must be non-interactive, the protocol is design in such a way that Alice learns Bob's refund encrypted signature and provides to Bob a valid refund 2-of-2 multisig signature before locking the funds. Bob can, in the case of a refund, decrypt and publish the signature without Alice cooperation.
+As mentioned before, the refund process must be non-interactive: The protocol is designed in such a way that Alice learns Bob's refund encrypted signature and provides to Bob a valid refund 2-of-2 multisig signature before locking the funds. Bob can, in the case of a refund, decrypt and publish the signature without Alice cooperation.
 
 \subsection{Monero private keys}
-Monero private keys are pairs of \texttt{edward25519} scalars. One is the private view key and the other is the private spend key. We use small letters to denote private keys and capital letters for public keys such that
+Monero private keys are pairs of \texttt{edward25519} scalars: One is the private view key and the other is the private spend key. We use small letters to denote private keys and capital letters for public keys such that
 $$X = xG$$
-Where $G$ is the generator element of the group $\GG$. We denote
+where $G$ is the generator element of the group $\GG$. We denote
 \begin{enumerate}[label=(\roman*)]
     \item the private key $k^v$ as the full private view key,
     \item $K^v$ as the full public view key,
@@ -316,10 +316,10 @@ for $i \in \{a, b\}$, given $K^s_i$ and $B^s_i$ that
 \end{equation}
 
 \subsection{Time parameters}
-Two timelocks $t_0, t_1$ are defined during the initialization phase. $t_0$ sets the time window during which it is safe to execute the trade, after $t_0$ the refund process may start, making the trade unsafe to complete because of a potential race condition (even if hard to exploit in reality). $t_1$ sets the response time during which Bob is required to react and reveal his private Monero share to get his bitcoin back and allow Alice to redeem her monero (if moneroj have been locked). After $t_1$ Alice is able to claim the bitcoin unilaterally.
+Two timelocks $t_0, t_1$ are defined during the initialization phase. $t_0$ sets the time window during which it is safe to execute the trade: after $t_0$, the refund process may start, making the trade unsafe to complete due to a potential race condition (even if hard to exploit in reality). $t_1$ sets the response time during which Bob is required to react and reveal his private Monero share to get his bitcoin back and allow Alice to redeem her monero (if monero have been locked). After $t_1$, Alice is able to claim the bitcoin unilaterally.
 
 \subsection{Bitcoin scripts}
-Two scripts are needed on the bitcoin side, one is used to complete the swap or start the refund process---a.k.a \texttt{SWAPLOCK}---, the second is used to complete the refund process---a.k.a \texttt{REFUND}---. In a successful swap the second script do not go on-chain and is not used. Each scripts define two possible paths, we explain the four possible ways (buy, refund, spend, and claim) of spending the two \texttt{UTXOs}.
+Two scripts are needed on the bitcoin side: the first is used to complete the swap or start the refund process---a.k.a \texttt{SWAPLOCK}---, the second is used to complete the refund process---a.k.a \texttt{REFUND}---. In a successful swap, the second script does not go on-chain and is not used. Each script defines two possible paths, and we consequently explain the four possible ways (\textit{buy}, \textit{refund}, \textit{spend}, and \textit{claim}) of spending the two \texttt{UTXOs}.
 
 \subsubsection{\texttt{SWAPLOCK}}
 is a script used to lock funds and defines the two base execution paths: (1) swap execution---success---and (2) refund execution---fail---. We define the \texttt{SWAPLOCK} script as:
@@ -335,14 +335,14 @@ OP_ENDIF
 \end{minted}
 
 \subsubsection{Buy \texttt{SWAPLOCK},}
-Alice takes control of bitcoin and reveals her Monero key share to Bob with $\sigma_1$, a one-time VES leaking $k^s_a$, thus allowing Bob to take control of the monero. $\BTX_\textit{buy}$ redeem the \texttt{SWAPLOCK} with:
+Alice takes control of the bitcoin and reveals her Monero key share to Bob with $\sigma_1$ --- a one-time VES leaking $k^s_a$ --- thus allowing Bob to take control of the monero. $\BTX_\textit{buy}$ redeems the \texttt{SWAPLOCK} with:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 OP_0 <|$\sigma_1$|> <|$\sigma_2$|> <|$s$|> OP_TRUE <|\texttt{SWAPLOCK} script|>
 \end{minted}
 
 \subsubsection{Refund \texttt{SWAPLOCK},}
-signed by both participants and moves the funds into the \texttt{REFUND} script. $\BTX_\textit{refund}$ redeem the \texttt{SWAPLOCK} with:
+signed by both participants, and moves the funds into the \texttt{REFUND} script. $\BTX_\textit{refund}$ redeems the \texttt{SWAPLOCK} with:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 OP_0 <|$\sigma_r'$|> <|$\sigma_r''$|> OP_FALSE <|\texttt{SWAPLOCK} script|>
@@ -361,14 +361,14 @@ OP_ENDIF
 \end{minted}
 
 \subsubsection{Spend \texttt{REFUND},}
-Bob cancels the swap and reveals his Monero private share with $\sigma_1'$, a one-time VES leaking $k^s_b$, thus allowing Alice to regain control over her Monero. $\BTX_\textit{spend}$ redeem the \texttt{REFUND} with:
+Bob cancels the swap and reveals his Monero private share with $\sigma_1'$ --- a one-time VES leaking $k^s_b$ --- thus allowing Alice to regain control over her Monero. $\BTX_\textit{spend}$ redeem the \texttt{REFUND} with:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 OP_0 <|$\sigma_1'$|> <|$\sigma_2'$|> OP_TRUE <|\texttt{REFUND} script|>
 \end{minted}
 
 \subsubsection{Claim \texttt{REFUND},}
-Alice takes control of bitcoin after both timelocks without revealing her Monero key share, ending up with Bob loosing money for not following the protocol. $\BTX_\textit{claim}$ redeem the \texttt{REFUND} with:
+Alice takes control of the bitcoin after both timelocks without revealing her Monero key share, ending up with Bob loosing money for not following the protocol. $\BTX_\textit{claim}$ redeems the \texttt{REFUND} with:
 
 \begin{minted}[escapeinside=||,mathescape=true]{text}
 <|$sig_a$|> OP_FALSE <|\texttt{REFUND} script|>
@@ -378,39 +378,38 @@ Alice takes control of bitcoin after both timelocks without revealing her Monero
 We describe and name the Bitcoin and Monero transactions that are needed for the entire protocol.
 
 \subsubsection{$\BTX_\textit{lock}$,}
-Bitcoin transaction with $\geq 1$ inputs from Bob and the first output (vout: 0) to \texttt{SWAPLOCK} script and optional change outputs.
+a Bitcoin transaction with $\geq 1$ inputs from Bob and the first output (vout: 0) to the \texttt{SWAPLOCK} script and optional change outputs.
 
 \subsubsection{$\BTX_\textit{buy}$,}
-Bitcoin transaction with 1 input consuming the \texttt{SWAPLOCK} script ($\BTX_\textit{lock}$, vout: 0) with the 2-of-2 semi-scriptless multisig and $\geq 1$ outputs.
+a Bitcoin transaction with 1 input consuming the \texttt{SWAPLOCK} script ($\BTX_\textit{lock}$, vout: 0) with the 2-of-2 semi-scriptless multisig and $\geq 1$ outputs.
 
 \subsubsection{$\BTX_\textit{refund}$,}
-Bitcoin transaction with 1 input consuming the \texttt{SWAPLOCK} script ($\BTX_\textit{lock}$, vout: 0) with the 2-of-2 timelocked multisig and exactly one output to \texttt{REFUND} script.
+a Bitcoin transaction with 1 input consuming the \texttt{SWAPLOCK} script ($\BTX_\textit{lock}$, vout: 0) with the 2-of-2 timelocked multisig and exactly one output to the \texttt{REFUND} script.
 
 \subsubsection{$\BTX_\textit{spend}$,}
-Bitcoin transaction with 1 input consuming the \texttt{REFUND} script ($\BTX_\textit{refund}$, vout: 0) with the 2-of-2 semi-scriptless multisig and $\geq 1$ outputs.
+a Bitcoin transaction with 1 input consuming the \texttt{REFUND} script ($\BTX_\textit{refund}$, vout: 0) with the 2-of-2 semi-scriptless multisig and $\geq 1$ outputs.
 
 \subsubsection{$\BTX_\textit{claim}$,}
-Bitcoin transaction with 1 input consuming the \texttt{REFUND} script ($\BTX_\textit{refund}$, vout: 0) with Alice signature and $\geq 1$ outputs.
+a Bitcoin transaction with 1 input consuming the \texttt{REFUND} script ($\BTX_\textit{refund}$, vout: 0) with Alice signature and $\geq 1$ outputs.
 
 \subsubsection{$\XTX_\textit{lock}$,}
-Monero transaction that sends funds to the address $(K^v,K^s)$.
+a Monero transaction that sends funds to the address $(K^v,K^s)$.
 
 \subsubsection{$\XTX_\textit{buy}$,}
-Monero transaction that spend funds from the address $(K^v,K^s)$.
+a Monero transaction that spend funds from the address $(K^v,K^s)$.
 
 \subsection{Full protocol sequence}
-We describe the full protocol execution to successfully complete a swap, while computing and sharing all necessary knowledge in case one stop responding at any time or one start the refund process actively.
+We describe the full protocol execution to successfully complete a swap, while computing and sharing all necessary knowledge in case any participant stops responding at any time or any participant starts the refund process actively.
 
-During the first communication round both share parameters used to initialize the protocol, we might avoid schemes such as commit-reveal even with $K^s = K^s_a + K^s_b$ thanks to the equal discrete logarithm zero-knowledge proofs, one cannot arbitrarily choose $K^s$ and compute a valid proof $z_i$, however to ensure getting a random view key for each execution a commit-reveal must be added on $k^v_i$, thus without adding more round of communication a commit-reveal might be added on
-$k^s_i$ also.
+During the first communication round, since both share parameters used to initialize the protocol, we might avoid schemes such as commit-reveal even with $K^s = K^s_a + K^s_b$: thanks to the equal discrete logarithm zero-knowledge proofs, one cannot arbitrarily choose $K^s$ and compute a valid proof $z_i$. However, to ensure getting a random view key for each execution, a commit-reveal must be added on $k^v_i$. Thus, without adding another round of communication, a commit-reveal might be added on $k^s_i$ also.
 
-We define some utility algorithms to initialize, sign and verify Bitcoin and Monero transactions.
+We define some utility algorithms to initialize, sign, and verify Bitcoin and Monero transactions.
 
 \begin{itemize}
-    \item $\InitTx()$: A generic and deterministic algorithm which on input of a set of parameters outputs a valid initialized transaction.
-    \item $\Sign()$: A generic and probabilistic algorithm for siging a transaction which on input of a private key and an initialized transaction outputs a valid signature for the transaction.
-    \item $\VrfyTx()$: A generic and deterministic algorithm which on input of a set of transactions and parameters outputs 1 only if the transactions are valid under the protocol rules and blockchain consensus.
-    \item $\Verify()$: A generic and deterministic algorithm which on input of a public key, a transactions and a signature outputs 1 only if the signature is valid for transactions given the public key.
+    \item $\InitTx()$: A generic and deterministic algorithm which --- on input of a set of parameters --- outputs a valid initialized transaction.
+    \item $\Sign()$: A generic and probabilistic algorithm for siging a transaction which --- on input of a private key and an initialized transaction --- outputs a valid signature for the transaction.
+    \item $\VrfyTx()$: A generic and deterministic algorithm which --- on input of a set of transactions and parameters --- outputs 1 if and only if the transactions are valid under the protocol rules and blockchain consensus.
+    \item $\Verify()$: A generic and deterministic algorithm which --- on input of a public key, a transactions and a signature --- outputs 1 if and only if the signature is valid for transactions given the public key.
     \item $\PubTx()$: A generic algorithm for publishing a transactions over the network.
     \item $\WatchTx()$: A generic algorithm for waiting on a transaction to confirm.
 \end{itemize}
@@ -495,17 +494,17 @@ We define some utility algorithms to initialize, sign and verify Bitcoin and Mon
   \label{fig:protocol}
 \end{figure}
 
-Dots represent syncronization timing during which one or more participants must check for transaction confirmations before continuing the protocol execution. The level of security, i.e. the number of confirmations required by each participants, is a local parameter, but must be set according to the timing parameters, which are global to both participants, to avoid the case when the timing is less or equal to the security parameter.
+Dots represent synchronization timing during which one or more participants must check for transaction confirmations before continuing the protocol execution. The level of security --- i.e. the number of confirmations required by each participants --- is a local parameter, but must be set according to the timing parameters --- which are global to both participants --- to avoid the case where the timing is less or equal to the security parameter.
 
 \section{Further research}
-This protocol is implementable with today's state of Bitcoin and Monero, but further research is required to use \texttt{Schnorr} capabilities and simplicity to create a more efficient protocol with lighter on-chain footprint. This would improve anonymization of atomic swaps in regards to chain-analysis.
+This protocol is implementable with today's state of Bitcoin and Monero, but further research is required to use \texttt{Schnorr} capabilities and simplicity to create a more efficient protocol with lighter on-chain footprint. This would improve anonymization of atomic swaps with respect to chain-analysis.
 
-As discussed, this protocol can be adapted to more cryptocurrencies. Some of them might not have atomic swap already, and extending to other pairs might help decentralization. Extending this protocol to privacy preserving cryptocurrencies pairs only like Monero or Mimblewimble is the next challenge in atomic swaps.
+As discussed, this protocol can be adapted to other cryptocurrencies. Some of them might not have atomic swap already, and extending to other pairs might improve decentralization. Extending this protocol to privacy preserving cryptocurrency pairs only --- like Monero or Mimblewimble --- is the next challenge in atomic swaps.
 
-Integration with services or decentralize exchanges would help democratize trading without trusted institutions and might increase the market liquidity. Because of the nature of the design beeing asymetric, building services might not be straightforward.
+Integration with services or decentralized exchanges would help democratizing trading without trusted institutions and might increase the market liquidity. Since the design presented here is asymmetric, building services might not be straightforward.
 
 \section{Acknowledgement}
-The Monero Research Lab and Sarang Noether are acknowledged for their helpful comments during the completion of this work. This work has been supported and partially funded by the Monero Community, a special thanks to all donators. Secondly thanks to TrueLevel SA collaborators for the initial funding and their helpful contribution and comments.
+The Monero Research Lab and Sarang Noether are acknowledged for their helpful comments during the completion of this work. This work has been supported and partially funded by the Monero Community --- we extend a special thanks to all donators. Secondly thanks to TrueLevel SA collaborators for the initial funding and their helpful contribution and comments.
 
 %
 % ---- Bibliography ----
