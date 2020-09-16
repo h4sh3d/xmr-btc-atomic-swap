@@ -105,11 +105,10 @@
 \begin{document}
 
 \title{Bitcoin--Monero Cross-chain Atomic Swap}
-\author{h4sh3d\inst{1}}
+\author{Jo\"el Gugger}
 
-\authorrunning{h4sh3d et al.}
-\tocauthor{h4sh3d}
-\subtitle{{\normalsize\today}}
+\authorrunning{Jo\"el Gugger et al.}
+\tocauthor{Jo\"el Gugger}
 \institute{\email{h4sh3d@protonmail.com}}
 
 \maketitle
@@ -126,13 +125,6 @@ We describe a protocol for an on-chain atomic swap between Monero and Bitcoin, b
 Participants send funds into a specific address generated during the process (the lock) on each chain (cross-chain) where each party can take control of the funds on the other chain (swap) atomically (i.e. claiming of funds on either chain is mutually exclusive from the ability to claim funds from the other chain.)
 
 During this process participants do not expose their funds if they follow the protocol accordingly, meaning that the swap is trustless and does not require any sort of collateral, allowing two strangers to trade without risks nor the help of a third-party.
-
-\subsection{Known limitations}
-To provide liveness (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up losing funds (by not being able to claim on the other chain). This can happen in the case where they do not follow the protocol, e.g. remaining online during pending swap or claiming funds in time. The rationale behind this design is explained in \ref{worstCaseRationale}.
-
-Fees are different from one chain to the other partly because of internal blockchain parameters \& transaction complexity, and also due to external factors such as demand for blockspace. Note that within this protocol, the Bitcoin blockchain is used as a decision engine, where we use scripting features of bitcoin---although we try to put as much logic as we can off-chain---, which causes bigger transactions on the bitcoin side. These two factors combined make the Bitcoin transactions more expensive in general than those on the Monero chain.
-
-Instant user feedback in a cross-chain atomic swap is hard to achieve.  The slowest chain and the number of confirmations required for transaction finality dictate the speed of the protocol, allowing front running in some cases. The protocol can be extended to prevent front running within certain setups however. It is worth noting that front running cannot be enforced by one participant on the other, thus making the worst case scenario the loss of transaction fees on each of the participants' respective blockchains.
 
 \section{Scenario}
 We describe the participants and their incentives. Alice, who owns monero (XMR), and Bob, who owns bitcoin (BTC), want to swap funds. We assume that they already have negotiated the price in advance (i.e. amount of bitcoin for amount of monero to swap.) This negotiation can also be integrated into the protocol, for example by swap services who provide a price to their customers.
@@ -247,7 +239,7 @@ We recall some of the algorithms defined in \cite{oneTimeVES} as:
 
 \subsection{Generalization}
 As shown in the Monero section, there are no on-chain requirements. We only make use of private key generation and addresses, meaning that this scheme can be generalized to any pair of cryptocurrencies where one fulfills the bitcoin prerequisites, making this scheme very chain agnostic (under the assumption of the above cryptographic primitives existence for the underlying chains' parameters). However, it is worth noting that other schemes are simpler and more efficient when, in the pair, both
-chains have on-chain capabilities, but such schemes are generally already deployed \cite{atomic-swap, scriptless-atomic-swap}.
+chains have on-chain capabilities, but such schemes are generally already deployed \cite{atomic-swap, scriptless-atomic-swap, btcGrinSwap}.
 
 \section{Protocol}
 The overall protocol is as follows: Alice moves the monero into an address where each participant controls half of the private spend key (later referred to as key ``shares''). The Bitcoin scripting language is then used with semi-scriptless protocols to reveal one of the halves of the private spend key, depending on which participant claims the bitcoin. Depending on who reveals their half of the private spend key, the locked monero change ownership. Bitcoin transactions are designed in such a way
@@ -411,6 +403,7 @@ We define some utility algorithms to initialize, sign, and verify Bitcoin and Mo
     \item $\Verify()$: A generic and deterministic algorithm which --- on input of a public key, a transactions and a signature --- outputs 1 if and only if the signature is valid for transactions given the public key.
     \item $\PubTx()$: A generic algorithm for publishing a transactions over the network.
     \item $\WatchTx()$: A generic algorithm for waiting on a transaction to confirm.
+    \item $\RecSig()$: A generic algorithm for extracting transaction's signatures.
 \end{itemize}
 
 \newpage
@@ -498,9 +491,16 @@ Dots represent synchronization timing during which one or more participants must
 \section{Further research}
 This protocol is implementable with today's state of Bitcoin and Monero, but further research is required to use \texttt{Schnorr} capabilities and simplicity to create a more efficient protocol with lighter on-chain footprints. This would improve anonymization of atomic swaps with respect to chain-analysis.
 
-As discussed, this protocol can be adapted to other cryptocurrencies. Some of them might not have atomic swaps yet, and extending to other pairs might improve decentralization. Extending this protocol to privacy preserving cryptocurrency pairs only --- like Monero or Mimblewimble --- is the next challenge in atomic swaps.
+As discussed, this protocol can be adapted to other cryptocurrencies. Some of them might not have atomic swaps yet, and extending to other pairs might improve decentralization. Extending this protocol to privacy preserving cryptocurrency pairs only --- like Monero with Mimblewimble --- is the next challenge in atomic swaps.
 
 Integration with services or decentralized exchanges would help democratizing trading without trusted institutions and might increase the market liquidity. Since the design presented here is asymmetric, building services might not be straightforward.
+
+\subsection{Known limitations}
+To provide liveness (if at least one participant is still online) we allow for the worst case scenario in which a participant may end up losing funds (by not being able to claim on the other chain). This can happen in the case where they do not follow the protocol, e.g. remaining online during pending swap or claiming funds in time. The rationale behind this design is explained in \ref{worstCaseRationale}.
+
+Fees are different from one chain to the other partly because of internal blockchain parameters \& transaction complexity, and also due to external factors such as demand for blockspace. Note that within this protocol, the Bitcoin blockchain is used as a decision engine, where we use scripting features of bitcoin---although we try to put as much logic as we can off-chain---, which causes bigger transactions on the bitcoin side. These two factors combined make the Bitcoin transactions more expensive in general than those on the Monero chain.
+
+Instant user feedback in a cross-chain atomic swap is hard to achieve.  The slowest chain and the number of confirmations required for transaction finality dictate the speed of the protocol, allowing front running in some cases. The protocol can be extended to prevent front running within certain setups however. It is worth noting that front running cannot be enforced by one participant on the other, thus making the worst case scenario the loss of transaction fees on each of the participants' respective blockchains.
 
 \section{Acknowledgement}
 The Monero Research Lab and Sarang Noether are acknowledged for their helpful comments during the completion of this work. This work has been supported and partially funded by the Monero Community --- we extend a special thanks to all donators. Finally, thanks to TrueLevel SA collaborators for the initial funding and their helpful contribution and comments.
