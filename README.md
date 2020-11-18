@@ -3,7 +3,7 @@
 Bitcoin & Monero Cross-chain Atomic Swap
 ===
 
-[Paper](https://eprint.iacr.org/2020/1126)
+[ia.cr/2020/1126](https://ia.cr/2020/1126)
 
 ## Abstract
 
